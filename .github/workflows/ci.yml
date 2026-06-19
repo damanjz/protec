@@ -46,3 +46,26 @@ jobs:
           key: tauri-cli-v2-${{ runner.os }}
       - run: cargo install tauri-cli --version "^2" --locked
       - run: cargo tauri build
+  host:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy -p protec-host --all-targets -- -D warnings
+      - run: cargo test -p protec-host
+      - run: cargo build -p protec-host --release
+  ext:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run test
+      - run: npm run build

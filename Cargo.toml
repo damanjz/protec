@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/protec-core", "src-tauri"]
+members = ["crates/protec-core", "crates/protec-host", "src-tauri"]
 
 [workspace.package]
 edition = "2021"

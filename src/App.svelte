@@ -5,6 +5,7 @@
   import FirstRun from "./lib/components/FirstRun.svelte";
   import LockScreen from "./lib/components/LockScreen.svelte";
   import MainView from "./lib/components/MainView.svelte";
+  import ConfirmPrompt from "./lib/components/ConfirmPrompt.svelte";
 
   let loading = true;
 
@@ -34,6 +35,8 @@
 {:else}
   <MainView />
 {/if}
+
+<ConfirmPrompt />
 
 <style>
   .center { text-align: center; margin-top: 30vh; color: var(--text-dim); }

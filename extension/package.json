@@ -1,0 +1,17 @@
+{
+  "name": "protec-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.270",
+    "typescript": "^5",
+    "vite": "^5",
+    "vitest": "^2",
+    "jsdom": "^25"
+  }
+}

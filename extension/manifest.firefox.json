@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Protec",
+  "version": "0.1.0",
+  "description": "Autofill from your local Protec vault.",
+  "permissions": ["nativeMessaging", "activeTab", "tabs"],
+  "background": { "scripts": ["background.js"] },
+  "action": { "default_popup": "popup.html" },
+  "content_scripts": [
+    { "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_idle" }
+  ],
+  "browser_specific_settings": { "gecko": { "id": "protec@local" } }
+}
