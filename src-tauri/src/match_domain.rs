@@ -24,7 +24,10 @@ pub fn registrable_domain(url_or_origin: &str) -> Option<String> {
 /// Both are reduced to their registrable domain and compared exactly — so
 /// `github.com` matches `www.github.com` but NOT `github.com.evil.com`.
 pub fn origin_matches(saved_url: &str, page_origin: &str) -> bool {
-    match (registrable_domain(saved_url), registrable_domain(page_origin)) {
+    match (
+        registrable_domain(saved_url),
+        registrable_domain(page_origin),
+    ) {
         (Some(a), Some(b)) => a == b,
         _ => false,
     }
@@ -36,23 +39,38 @@ mod tests {
 
     #[test]
     fn extracts_simple_domain() {
-        assert_eq!(registrable_domain("https://github.com/login").as_deref(), Some("github.com"));
+        assert_eq!(
+            registrable_domain("https://github.com/login").as_deref(),
+            Some("github.com")
+        );
     }
 
     #[test]
     fn extracts_from_subdomain() {
-        assert_eq!(registrable_domain("https://www.github.com").as_deref(), Some("github.com"));
-        assert_eq!(registrable_domain("https://accounts.github.com").as_deref(), Some("github.com"));
+        assert_eq!(
+            registrable_domain("https://www.github.com").as_deref(),
+            Some("github.com")
+        );
+        assert_eq!(
+            registrable_domain("https://accounts.github.com").as_deref(),
+            Some("github.com")
+        );
     }
 
     #[test]
     fn handles_multi_part_suffix() {
-        assert_eq!(registrable_domain("https://a.b.example.co.uk").as_deref(), Some("example.co.uk"));
+        assert_eq!(
+            registrable_domain("https://a.b.example.co.uk").as_deref(),
+            Some("example.co.uk")
+        );
     }
 
     #[test]
     fn accepts_bare_host() {
-        assert_eq!(registrable_domain("github.com").as_deref(), Some("github.com"));
+        assert_eq!(
+            registrable_domain("github.com").as_deref(),
+            Some("github.com")
+        );
     }
 
     #[test]
@@ -62,14 +80,23 @@ mod tests {
 
     #[test]
     fn matches_same_registrable_domain() {
-        assert!(origin_matches("https://github.com", "https://www.github.com/login"));
-        assert!(origin_matches("https://accounts.github.com", "https://github.com"));
+        assert!(origin_matches(
+            "https://github.com",
+            "https://www.github.com/login"
+        ));
+        assert!(origin_matches(
+            "https://accounts.github.com",
+            "https://github.com"
+        ));
     }
 
     #[test]
     fn rejects_lookalike_suffix_attack() {
         // The classic phishing vector — must NOT match.
-        assert!(!origin_matches("https://github.com", "https://github.com.evil.com"));
+        assert!(!origin_matches(
+            "https://github.com",
+            "https://github.com.evil.com"
+        ));
     }
 
     #[test]

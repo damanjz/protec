@@ -10,7 +10,11 @@ pub struct RateLimiter {
 
 impl RateLimiter {
     pub fn new(window_ms: u64, max_in_window: usize) -> Self {
-        Self { window_ms, max_in_window, hits: HashMap::new() }
+        Self {
+            window_ms,
+            max_in_window,
+            hits: HashMap::new(),
+        }
     }
 
     /// Record a request for `origin` at time `now_ms`. Returns true if allowed,
@@ -45,8 +49,8 @@ mod tests {
         let mut rl = RateLimiter::new(1000, 2);
         assert!(rl.check("a", 0));
         assert!(rl.check("a", 500));
-        assert!(!rl.check("a", 600));     // blocked
-        assert!(rl.check("a", 1600));     // first hit aged out → allowed again
+        assert!(!rl.check("a", 600)); // blocked
+        assert!(rl.check("a", 1600)); // first hit aged out → allowed again
     }
 
     #[test]

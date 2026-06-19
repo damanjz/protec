@@ -45,6 +45,32 @@ vault file location — is configurable in **Settings**.
 The vault lives at `%APPDATA%\Protec\vault.dat` by default; preferences are stored
 (without secrets) in `%APPDATA%\Protec\config.toml`.
 
+## Browser extension (autofill)
+
+Protec autofills logins in Chrome, Edge, and Firefox via **native messaging** —
+no network, no localhost server. The browser talks to a small local host
+(`protec-host`) that relays requests to the running desktop app over a Windows
+named pipe. The app is the gatekeeper: it stays unlocked, matches the page's
+registrable domain (strict — `github.com` never fills on `github.com.evil.com`),
+and every fill/save/update requires an explicit Allow in the app.
+
+### Install (development)
+
+```bash
+cargo build -p protec-host --release          # build the host
+cd extension && npm install && npm run build  # build the extension
+```
+
+Load `extension/dist` (with the right manifest copied in as `manifest.json`) as
+an unpacked extension, then register the host (run from a normal PowerShell — no
+admin needed):
+
+```powershell
+extension\scripts\register-host.ps1 -HostExe "<repo>\target\release\protec-host.exe" -ChromiumExtId "<your-unpacked-extension-id>"
+```
+
+The desktop app must be running and unlocked for autofill to work.
+
 ## License
 
 Apache-2.0.

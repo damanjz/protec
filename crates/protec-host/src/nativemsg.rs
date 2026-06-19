@@ -15,7 +15,10 @@ pub fn read_message(r: &mut impl Read) -> std::io::Result<Option<Vec<u8>>> {
     }
     let len = u32::from_le_bytes(len_buf);
     if len > MAX_MESSAGE {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "message too large"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "message too large",
+        ));
     }
     let mut body = vec![0u8; len as usize];
     r.read_exact(&mut body)?;

@@ -45,7 +45,13 @@ async fn handle_conn(app: AppHandle, mut server: NamedPipeServer) -> std::io::Re
     let req: Request = match serde_json::from_slice(&body) {
         Ok(r) => r,
         Err(e) => {
-            write_response(&mut server, &Response::Error { message: e.to_string() }).await?;
+            write_response(
+                &mut server,
+                &Response::Error {
+                    message: e.to_string(),
+                },
+            )
+            .await?;
             return Ok(());
         }
     };
@@ -58,7 +64,11 @@ async fn handle_conn(app: AppHandle, mut server: NamedPipeServer) -> std::io::Re
     if let Some(origin) = origin {
         let now = now_ms();
         let limiter = app.state::<RateLimitState>();
-        let allowed = limiter.0.lock().unwrap_or_else(|p| p.into_inner()).check(&origin, now);
+        let allowed = limiter
+            .0
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .check(&origin, now);
         if !allowed {
             write_response(&mut server, &Response::Denied).await?;
             return Ok(());
@@ -119,13 +129,18 @@ pub struct RateLimitState(pub std::sync::Mutex<crate::ipc::ratelimit::RateLimite
 impl Default for RateLimitState {
     fn default() -> Self {
         // Allow up to 5 autofill requests per origin per 10 seconds.
-        Self(std::sync::Mutex::new(crate::ipc::ratelimit::RateLimiter::new(10_000, 5)))
+        Self(std::sync::Mutex::new(
+            crate::ipc::ratelimit::RateLimiter::new(10_000, 5),
+        ))
     }
 }
 
 fn now_ms() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 /// Called by the frontend to answer the current confirmation prompt.

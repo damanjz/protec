@@ -7,8 +7,14 @@ pub const PIPE_NAME: &str = r"\\.\pipe\protec-ipc-v1";
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Request {
-    Find { origin: String },
-    Submit { origin: String, username: String, password: String },
+    Find {
+        origin: String,
+    },
+    Submit {
+        origin: String,
+        username: String,
+        password: String,
+    },
     Status,
 }
 
@@ -35,7 +41,9 @@ mod tests {
 
     #[test]
     fn request_round_trips() {
-        let r = Request::Find { origin: "https://github.com".into() };
+        let r = Request::Find {
+            origin: "https://github.com".into(),
+        };
         let j = serde_json::to_string(&r).unwrap();
         assert_eq!(serde_json::from_str::<Request>(&j).unwrap(), r);
     }

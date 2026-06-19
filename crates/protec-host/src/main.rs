@@ -19,12 +19,10 @@ fn main() {
         // an Error response so the extension shows a friendly state.
         let reply = match pipe::round_trip(&msg) {
             Ok(body) => body,
-            Err(_) => {
-                serde_json::to_vec(&protocol::Response::Error {
-                    message: "Protec desktop app is not running".into(),
-                })
-                .unwrap_or_default()
-            }
+            Err(_) => serde_json::to_vec(&protocol::Response::Error {
+                message: "Protec desktop app is not running".into(),
+            })
+            .unwrap_or_default(),
         };
 
         if nativemsg::write_message(&mut output, &reply).is_err() {

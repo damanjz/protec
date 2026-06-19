@@ -1,13 +1,19 @@
 use serde::{Deserialize, Serialize};
 
 /// Messages the extension sends to the host (and the host relays to the app).
+// The host relays raw JSON without deserializing; Request exists for the shared protocol contract and tests.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Request {
     /// "What logins do you have for this page?" origin is browser-supplied.
     Find { origin: String },
     /// "I just submitted this login." The app decides save vs update vs noop.
-    Submit { origin: String, username: String, password: String },
+    Submit {
+        origin: String,
+        username: String,
+        password: String,
+    },
     /// "Are you there and unlocked?"
     Status,
 }
@@ -38,7 +44,9 @@ mod tests {
 
     #[test]
     fn request_round_trips() {
-        let r = Request::Find { origin: "https://github.com".into() };
+        let r = Request::Find {
+            origin: "https://github.com".into(),
+        };
         let json = serde_json::to_string(&r).unwrap();
         assert_eq!(serde_json::from_str::<Request>(&json).unwrap(), r);
     }
@@ -57,13 +65,18 @@ mod tests {
     #[test]
     fn response_variants_round_trip() {
         for r in [
-            Response::Credential { username: "u".into(), password: "p".into() },
+            Response::Credential {
+                username: "u".into(),
+                password: "p".into(),
+            },
             Response::NoMatch,
             Response::Locked,
             Response::Denied,
             Response::Acknowledged,
             Response::Status { unlocked: true },
-            Response::Error { message: "x".into() },
+            Response::Error {
+                message: "x".into(),
+            },
         ] {
             let json = serde_json::to_string(&r).unwrap();
             assert_eq!(serde_json::from_str::<Response>(&json).unwrap(), r);

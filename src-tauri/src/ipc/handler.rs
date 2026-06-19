@@ -16,7 +16,11 @@ pub fn find_matches(entries: &[Entry], origin: &str) -> Vec<Match> {
     entries
         .iter()
         .filter(|e| !e.url.is_empty() && origin_matches(&e.url, origin))
-        .map(|e| Match { id: e.id, username: e.username.clone(), password: e.password.clone() })
+        .map(|e| Match {
+            id: e.id,
+            username: e.username.clone(),
+            password: e.password.clone(),
+        })
         .collect()
 }
 
@@ -33,12 +37,15 @@ pub enum SubmitOutcome {
 
 /// Decide save vs update vs noop. The extension never knew the stored password;
 /// this comparison happens here, in Rust, where the secret lives.
-pub fn classify_submit(entries: &[Entry], origin: &str, username: &str, password: &str)
-    -> SubmitOutcome
-{
-    let existing = entries.iter().find(|e| {
-        !e.url.is_empty() && origin_matches(&e.url, origin) && e.username == username
-    });
+pub fn classify_submit(
+    entries: &[Entry],
+    origin: &str,
+    username: &str,
+    password: &str,
+) -> SubmitOutcome {
+    let existing = entries
+        .iter()
+        .find(|e| !e.url.is_empty() && origin_matches(&e.url, origin) && e.username == username);
     match existing {
         None => SubmitOutcome::Save,
         Some(e) if e.password == password => SubmitOutcome::NoOp,
@@ -74,9 +81,16 @@ where
                 return Response::Denied;
             }
             let m = &matches[0];
-            Response::Credential { username: m.username.clone(), password: m.password.clone() }
+            Response::Credential {
+                username: m.username.clone(),
+                password: m.password.clone(),
+            }
         }
-        Request::Submit { origin, username, password } => {
+        Request::Submit {
+            origin,
+            username,
+            password,
+        } => {
             let outcome = {
                 let inner = state.lock();
                 match &inner.slot {
@@ -133,7 +147,10 @@ where
 
 fn now_secs() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 #[cfg(test)]
