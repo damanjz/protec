@@ -33,6 +33,7 @@ fn main() {
         .manage(app_state)
         .manage(PendingConfirm::default())
         .manage(RateLimitState::default())
+        .manage(commands::entries::RevealLimiter::default())
         .setup(|app| {
             ipc::server::spawn(app.handle().clone());
             Ok(())

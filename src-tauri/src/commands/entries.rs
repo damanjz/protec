@@ -4,6 +4,29 @@ use protec_core::{Entry, VaultError};
 use tauri::State;
 use uuid::Uuid;
 
+/// Rate limiter for plaintext password reveals/copies. Blocks bulk exfiltration
+/// (e.g. a script dumping every password) while never impeding a human revealing
+/// a handful of entries. Keyed by a constant since the threat is total volume.
+pub struct RevealLimiter(pub std::sync::Mutex<crate::ipc::ratelimit::RateLimiter>);
+
+impl Default for RevealLimiter {
+    fn default() -> Self {
+        // Allow up to 30 reveals per 10 seconds — far above any human pace,
+        // far below a scripted dump of a full vault.
+        Self(std::sync::Mutex::new(
+            crate::ipc::ratelimit::RateLimiter::new(10_000, 30),
+        ))
+    }
+}
+
+fn reveal_now_ms() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
 fn map_err(e: VaultError) -> String {
     match e {
         VaultError::NotFound => "Entry not found".into(),
@@ -32,7 +55,22 @@ pub fn list_entries(state: State<AppState>) -> Result<Vec<EntrySummary>, String>
 }
 
 #[tauri::command]
-pub fn get_entry(id: Uuid, reveal: bool, state: State<AppState>) -> Result<EntryDetail, String> {
+pub fn get_entry(
+    id: Uuid,
+    reveal: bool,
+    state: State<AppState>,
+    reveal_limiter: State<RevealLimiter>,
+) -> Result<EntryDetail, String> {
+    if reveal {
+        let allowed = reveal_limiter
+            .0
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .check("reveal", reveal_now_ms());
+        if !allowed {
+            return Err("Too many password reveals — slow down.".into());
+        }
+    }
     with_unlocked(&state, |v| {
         let e = v.get(id).ok_or_else(|| "Entry not found".to_string())?;
         Ok(if reveal {
@@ -101,4 +139,25 @@ fn now_secs() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod reveal_tests {
+    use crate::ipc::ratelimit::RateLimiter;
+
+    #[test]
+    fn reveal_limiter_blocks_bulk_but_allows_human_pace() {
+        let mut rl = RateLimiter::new(10_000, 30);
+        // 30 reveals in the window are allowed (generous human pace).
+        for i in 0..30 {
+            assert!(rl.check("reveal", i), "reveal {i} should be allowed");
+        }
+        // The 31st within the window is blocked (a scripted dump).
+        assert!(!rl.check("reveal", 31), "31st reveal should be blocked");
+        // After the window slides, reveals are allowed again.
+        assert!(
+            rl.check("reveal", 10_001),
+            "reveal after window should be allowed"
+        );
+    }
 }

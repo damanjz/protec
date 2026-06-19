@@ -89,8 +89,13 @@
 
   async function reveal() {
     if (!selectedId) return;
-    revealed = !revealed;
-    detail = await api.getEntry(selectedId, revealed);
+    const next = !revealed;
+    try {
+      detail = await api.getEntry(selectedId, next);
+      revealed = next;
+    } catch (e) {
+      notify(String(e), "error");
+    }
   }
 
   async function copyPw() {
