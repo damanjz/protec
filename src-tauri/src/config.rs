@@ -5,11 +5,11 @@ use std::path::Path;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
-    pub auto_lock_secs: u64,        // 0 = never
+    pub auto_lock_secs: u64, // 0 = never
     pub lock_on_blur: bool,
-    pub clipboard_clear_secs: u64,  // 0 = never
+    pub clipboard_clear_secs: u64, // 0 = never
     pub auto_save: bool,
-    pub theme: String,              // "slate" | "terminal-green"
+    pub theme: String, // "slate" | "terminal-green"
     pub reveal_on_select: bool,
     pub gen_length: usize,
     pub gen_lowercase: bool,
@@ -62,7 +62,9 @@ impl AppConfig {
 
     /// Parse from TOML text; malformed input falls back to defaults (never errors).
     pub fn from_toml_or_default(text: &str) -> Self {
-        toml::from_str::<AppConfig>(text).unwrap_or_default().sanitized()
+        toml::from_str::<AppConfig>(text)
+            .unwrap_or_default()
+            .sanitized()
     }
 
     pub fn to_toml(&self) -> String {
@@ -121,14 +123,19 @@ mod tests {
 
     #[test]
     fn no_charset_enabled_is_repaired() {
-        let text = "gen_lowercase = false\ngen_uppercase = false\ngen_digits = false\ngen_symbols = false";
+        let text =
+            "gen_lowercase = false\ngen_uppercase = false\ngen_digits = false\ngen_symbols = false";
         let c = AppConfig::from_toml_or_default(text);
         assert!(c.gen_lowercase || c.gen_uppercase || c.gen_digits || c.gen_symbols);
     }
 
     #[test]
     fn toml_round_trips() {
-        let c = AppConfig { auto_lock_secs: 300, theme: "terminal-green".into(), ..Default::default() };
+        let c = AppConfig {
+            auto_lock_secs: 300,
+            theme: "terminal-green".into(),
+            ..Default::default()
+        };
         let back = AppConfig::from_toml_or_default(&c.to_toml());
         assert_eq!(c, back);
     }
@@ -146,7 +153,11 @@ mod tests {
         let dir = std::env::temp_dir().join("protec_cfg_rt_test");
         let _ = std::fs::remove_dir_all(&dir);
         let path = dir.join("config.toml");
-        let c = AppConfig { theme: "terminal-green".into(), clipboard_clear_secs: 30, ..Default::default() };
+        let c = AppConfig {
+            theme: "terminal-green".into(),
+            clipboard_clear_secs: 30,
+            ..Default::default()
+        };
         c.save(&path).unwrap();
         assert_eq!(AppConfig::load(&path), c);
         let _ = std::fs::remove_dir_all(&dir);

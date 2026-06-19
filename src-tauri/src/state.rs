@@ -24,7 +24,11 @@ pub struct Inner {
 impl AppState {
     pub fn new(vault_path: PathBuf, config: AppConfig) -> Self {
         Self {
-            inner: Mutex::new(Inner { slot: VaultSlot::Locked, vault_path, config }),
+            inner: Mutex::new(Inner {
+                slot: VaultSlot::Locked,
+                vault_path,
+                config,
+            }),
         }
     }
 
@@ -34,6 +38,8 @@ impl AppState {
         self.inner.lock().unwrap_or_else(|p| p.into_inner())
     }
 
+    /// Only used by the test suite; gated so it doesn't trip dead_code in release.
+    #[cfg(test)]
     pub fn is_unlocked(&self) -> bool {
         matches!(self.lock().slot, VaultSlot::Unlocked(_))
     }

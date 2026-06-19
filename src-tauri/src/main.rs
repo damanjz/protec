@@ -11,7 +11,9 @@ use std::path::PathBuf;
 
 /// Resolve the default vault path: %APPDATA%/Protec/vault.dat (falls back to CWD).
 fn default_vault_path() -> PathBuf {
-    let base = std::env::var("APPDATA").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("."));
+    let base = std::env::var("APPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."));
     base.join("Protec").join("vault.dat")
 }
 

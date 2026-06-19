@@ -35,7 +35,8 @@ pub fn create_vault(master_password: String, state: State<AppState>) -> Result<(
     }
     // First run: the parent directory (e.g. %APPDATA%\Protec) may not exist yet.
     if let Some(parent) = inner.vault_path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("Could not create vault folder: {e}"))?;
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Could not create vault folder: {e}"))?;
     }
     Vault::create(&inner.vault_path, &master_password).map_err(map_err)
 }

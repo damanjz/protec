@@ -4,7 +4,7 @@ on:
     branches: [main]
   pull_request:
 jobs:
-  test:
+  core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -12,8 +12,8 @@ jobs:
         with:
           components: clippy, rustfmt
       - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo test --workspace
+      - run: cargo clippy -p protec-core --all-targets -- -D warnings
+      - run: cargo test -p protec-core
   audit:
     runs-on: ubuntu-latest
     steps:
@@ -21,3 +21,23 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo install cargo-audit
       - run: cargo audit
+  gui:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run test
+      - run: npm run build
+      - run: cargo clippy -p protec-gui --all-targets -- -D warnings
+      - run: cargo test -p protec-gui
+      # Production bundle must use the Tauri CLI (NOT `cargo build`), which embeds
+      # the frontend dist/ — a plain cargo build produces a binary that points at
+      # the dev server (localhost) and cannot run standalone.
+      - run: cargo install tauri-cli --version "^2" --locked
+      - run: cargo tauri build

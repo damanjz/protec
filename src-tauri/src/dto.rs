@@ -101,7 +101,10 @@ mod tests {
         let e = sample();
         let s = EntrySummary::from(&e);
         let json = serde_json::to_string(&s).unwrap();
-        assert!(!json.contains("s3cr3t-pw"), "summary leaked the password: {json}");
+        assert!(
+            !json.contains("s3cr3t-pw"),
+            "summary leaked the password: {json}"
+        );
         assert_eq!(s.title, "GitHub");
     }
 

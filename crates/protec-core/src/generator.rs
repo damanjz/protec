@@ -85,7 +85,11 @@ pub struct PassphraseOptions {
 
 impl Default for PassphraseOptions {
     fn default() -> Self {
-        Self { words: 4, separator: "-".to_string(), capitalize: false }
+        Self {
+            words: 4,
+            separator: "-".to_string(),
+            capitalize: false,
+        }
     }
 }
 
@@ -95,40 +99,34 @@ impl Default for PassphraseOptions {
 /// nouns/adjectives (animals, colors, objects, nature, food), 3–8 letters, all
 /// lowercase, with no duplicates.
 const WORDS: &[&str] = &[
-    "able", "acid", "acorn", "actor", "amber", "anchor", "angle", "ankle",
-    "apple", "apron", "arch", "arrow", "ash", "aspen", "atom", "autumn",
-    "axe", "azure", "bacon", "badge", "bagel", "baker", "bamboo", "banana",
-    "banjo", "barley", "basil", "basin", "basket", "beach", "beacon", "bean",
-    "bear", "beaver", "beetle", "berry", "birch", "bird", "bison", "black",
-    "blade", "blanket", "block", "bloom", "blue", "boat", "bolt", "bone",
-    "bonus", "book", "boot", "bottle", "boulder", "bowl", "branch", "brass",
-    "bread", "brick", "bridge", "broom", "brown", "brush", "bubble", "bucket",
-    "buffalo", "bugle", "bunny", "burrow", "button", "cabin", "cable", "cactus",
-    "camel", "candle", "canoe", "canyon", "carbon", "cargo", "carrot", "castle",
-    "cedar", "celery", "chain", "chalk", "cheese", "cherry", "chest", "chili",
-    "cider", "clay", "clever", "cliff", "clock", "cloud", "clover", "coal",
-    "coast", "cobalt", "cocoa", "coffee", "comet", "copper", "coral", "corn",
-    "cotton", "cougar", "cousin", "cover", "crab", "crane", "crater", "cream",
-    "crow", "crystal", "cube", "daisy", "dawn", "deer", "delta", "desert",
-    "diamond", "dimple", "dolphin", "donut", "dove", "dragon", "drum", "duck",
-    "dune", "dusk", "eagle", "earth", "ember", "emerald", "engine", "fable",
-    "falcon", "fawn", "fern", "field", "finch", "flame", "flint", "flower",
-    "flute", "forest", "fossil", "fountain", "fox", "frog", "frost", "garden",
-    "garnet", "ginger", "glacier", "globe", "goat", "gold", "goose", "granite",
-    "grape", "grass", "green", "grove", "guava", "hammer", "harbor", "hazel",
-    "heron", "hickory", "honey", "hornet", "horse", "ivory", "jade", "jaguar",
-    "jasmine", "jelly", "jungle", "kettle", "kitten", "koala", "lagoon", "lake",
-    "lantern", "lava", "leaf", "lemon", "lentil", "lilac", "lily", "lime",
-    "lion", "lizard", "llama", "lotus", "lumber", "mango", "maple", "marble",
-    "marsh", "meadow", "melon", "mint", "mirror", "moose", "moss", "mountain",
-    "mouse", "muffin", "needle", "nickel", "noodle", "oak", "ocean", "olive",
-    "onion", "onyx", "orange", "orchid", "otter", "owl", "oyster", "paddle",
-    "panda", "pansy", "paper", "parrot", "peach", "peanut", "pearl", "pebble",
-    "pecan", "pelican", "penguin", "pepper", "pewter", "pigeon", "pillow", "pine",
-    "pizza", "planet", "plum", "pond", "poppy", "potato", "prairie", "pumpkin",
-    "quartz", "rabbit", "radish", "raisin", "raven", "ribbon", "river", "robin",
-    "rose", "ruby", "saddle", "salmon", "sapphire", "scarf", "seal", "silver",
-    "sparrow", "spruce", "tiger", "tulip", "violet", "walnut", "willow", "zebra",
+    "able", "acid", "acorn", "actor", "amber", "anchor", "angle", "ankle", "apple", "apron",
+    "arch", "arrow", "ash", "aspen", "atom", "autumn", "axe", "azure", "bacon", "badge", "bagel",
+    "baker", "bamboo", "banana", "banjo", "barley", "basil", "basin", "basket", "beach", "beacon",
+    "bean", "bear", "beaver", "beetle", "berry", "birch", "bird", "bison", "black", "blade",
+    "blanket", "block", "bloom", "blue", "boat", "bolt", "bone", "bonus", "book", "boot", "bottle",
+    "boulder", "bowl", "branch", "brass", "bread", "brick", "bridge", "broom", "brown", "brush",
+    "bubble", "bucket", "buffalo", "bugle", "bunny", "burrow", "button", "cabin", "cable",
+    "cactus", "camel", "candle", "canoe", "canyon", "carbon", "cargo", "carrot", "castle", "cedar",
+    "celery", "chain", "chalk", "cheese", "cherry", "chest", "chili", "cider", "clay", "clever",
+    "cliff", "clock", "cloud", "clover", "coal", "coast", "cobalt", "cocoa", "coffee", "comet",
+    "copper", "coral", "corn", "cotton", "cougar", "cousin", "cover", "crab", "crane", "crater",
+    "cream", "crow", "crystal", "cube", "daisy", "dawn", "deer", "delta", "desert", "diamond",
+    "dimple", "dolphin", "donut", "dove", "dragon", "drum", "duck", "dune", "dusk", "eagle",
+    "earth", "ember", "emerald", "engine", "fable", "falcon", "fawn", "fern", "field", "finch",
+    "flame", "flint", "flower", "flute", "forest", "fossil", "fountain", "fox", "frog", "frost",
+    "garden", "garnet", "ginger", "glacier", "globe", "goat", "gold", "goose", "granite", "grape",
+    "grass", "green", "grove", "guava", "hammer", "harbor", "hazel", "heron", "hickory", "honey",
+    "hornet", "horse", "ivory", "jade", "jaguar", "jasmine", "jelly", "jungle", "kettle", "kitten",
+    "koala", "lagoon", "lake", "lantern", "lava", "leaf", "lemon", "lentil", "lilac", "lily",
+    "lime", "lion", "lizard", "llama", "lotus", "lumber", "mango", "maple", "marble", "marsh",
+    "meadow", "melon", "mint", "mirror", "moose", "moss", "mountain", "mouse", "muffin", "needle",
+    "nickel", "noodle", "oak", "ocean", "olive", "onion", "onyx", "orange", "orchid", "otter",
+    "owl", "oyster", "paddle", "panda", "pansy", "paper", "parrot", "peach", "peanut", "pearl",
+    "pebble", "pecan", "pelican", "penguin", "pepper", "pewter", "pigeon", "pillow", "pine",
+    "pizza", "planet", "plum", "pond", "poppy", "potato", "prairie", "pumpkin", "quartz", "rabbit",
+    "radish", "raisin", "raven", "ribbon", "river", "robin", "rose", "ruby", "saddle", "salmon",
+    "sapphire", "scarf", "seal", "silver", "sparrow", "spruce", "tiger", "tulip", "violet",
+    "walnut", "willow", "zebra",
 ];
 
 /// Generate a passphrase. Returns None if words == 0.
@@ -164,7 +162,10 @@ mod tests {
 
     #[test]
     fn generates_requested_length() {
-        let opts = CharsetOptions { length: 32, ..Default::default() };
+        let opts = CharsetOptions {
+            length: 32,
+            ..Default::default()
+        };
         let pw = generate_password(&opts).unwrap();
         assert_eq!(pw.chars().count(), 32);
     }
@@ -185,7 +186,11 @@ mod tests {
 
     #[test]
     fn exclude_ambiguous_removes_those_chars() {
-        let opts = CharsetOptions { length: 500, exclude_ambiguous: true, ..Default::default() };
+        let opts = CharsetOptions {
+            length: 500,
+            exclude_ambiguous: true,
+            ..Default::default()
+        };
         let pw = generate_password(&opts).unwrap();
         assert!(pw.chars().all(|c| !AMBIGUOUS.contains(c)));
     }
@@ -205,27 +210,43 @@ mod tests {
 
     #[test]
     fn zero_length_returns_none() {
-        let opts = CharsetOptions { length: 0, ..Default::default() };
+        let opts = CharsetOptions {
+            length: 0,
+            ..Default::default()
+        };
         assert!(generate_password(&opts).is_none());
     }
 
     #[test]
     fn passphrase_has_requested_word_count() {
-        let opts = PassphraseOptions { words: 5, separator: "-".into(), capitalize: false };
+        let opts = PassphraseOptions {
+            words: 5,
+            separator: "-".into(),
+            capitalize: false,
+        };
         let phrase = generate_passphrase(&opts).unwrap();
         assert_eq!(phrase.split('-').count(), 5);
     }
 
     #[test]
     fn passphrase_capitalizes_when_requested() {
-        let opts = PassphraseOptions { words: 3, separator: " ".into(), capitalize: true };
+        let opts = PassphraseOptions {
+            words: 3,
+            separator: " ".into(),
+            capitalize: true,
+        };
         let phrase = generate_passphrase(&opts).unwrap();
-        assert!(phrase.split(' ').all(|w| w.chars().next().unwrap().is_uppercase()));
+        assert!(phrase
+            .split(' ')
+            .all(|w| w.chars().next().unwrap().is_uppercase()));
     }
 
     #[test]
     fn passphrase_zero_words_is_none() {
-        let opts = PassphraseOptions { words: 0, ..Default::default() };
+        let opts = PassphraseOptions {
+            words: 0,
+            ..Default::default()
+        };
         assert!(generate_passphrase(&opts).is_none());
     }
 

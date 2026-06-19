@@ -35,7 +35,11 @@ pub fn list_entries(state: State<AppState>) -> Result<Vec<EntrySummary>, String>
 pub fn get_entry(id: Uuid, reveal: bool, state: State<AppState>) -> Result<EntryDetail, String> {
     with_unlocked(&state, |v| {
         let e = v.get(id).ok_or_else(|| "Entry not found".to_string())?;
-        Ok(if reveal { EntryDetail::revealed(e) } else { EntryDetail::masked(e) })
+        Ok(if reveal {
+            EntryDetail::revealed(e)
+        } else {
+            EntryDetail::masked(e)
+        })
     })
 }
 
@@ -66,7 +70,12 @@ pub fn add_entry(input: EntryInput, now: u64, state: State<AppState>) -> Result<
 }
 
 #[tauri::command]
-pub fn update_entry(id: Uuid, input: EntryInput, now: u64, state: State<AppState>) -> Result<(), String> {
+pub fn update_entry(
+    id: Uuid,
+    input: EntryInput,
+    now: u64,
+    state: State<AppState>,
+) -> Result<(), String> {
     with_unlocked(&state, |v| {
         let existing = v.get(id).ok_or_else(|| "Entry not found".to_string())?;
         let mut e = existing.clone();
