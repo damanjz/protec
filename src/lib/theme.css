@@ -1,0 +1,33 @@
+:root,
+[data-theme="slate"] {
+  --bg: #0d1117;
+  --bg-elev: #161b22;
+  --border: #21262d;
+  --row-sel: #161d2b;
+  --text: #e6edf3;
+  --text-dim: #7d8590;
+  --accent: #2f81f7;
+  --live: #3fb950;
+  --danger: #f85149;
+  --mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+}
+[data-theme="terminal-green"] {
+  --bg: #05080a;
+  --bg-elev: #08110d;
+  --border: #133326;
+  --row-sel: #0b2018;
+  --text: #caffd8;
+  --text-dim: #3a7a55;
+  --accent: #2ee06a;
+  --live: #39ff8a;
+  --danger: #ff6b6b;
+  --mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+}
