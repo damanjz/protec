@@ -1,0 +1,116 @@
+use serde::{Deserialize, Serialize};
+
+/// User preferences. Holds NO secrets. Persisted as TOML.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AppConfig {
+    pub auto_lock_secs: u64,        // 0 = never
+    pub lock_on_blur: bool,
+    pub clipboard_clear_secs: u64,  // 0 = never
+    pub auto_save: bool,
+    pub theme: String,              // "slate" | "terminal-green"
+    pub reveal_on_select: bool,
+    pub gen_length: usize,
+    pub gen_lowercase: bool,
+    pub gen_uppercase: bool,
+    pub gen_digits: bool,
+    pub gen_symbols: bool,
+    pub gen_exclude_ambiguous: bool,
+    pub vault_path: Option<String>, // None = default location
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            auto_lock_secs: 600,
+            lock_on_blur: false,
+            clipboard_clear_secs: 20,
+            auto_save: true,
+            theme: "slate".to_string(),
+            reveal_on_select: false,
+            gen_length: 20,
+            gen_lowercase: true,
+            gen_uppercase: true,
+            gen_digits: true,
+            gen_symbols: true,
+            gen_exclude_ambiguous: true,
+            vault_path: None,
+        }
+    }
+}
+
+impl AppConfig {
+    /// Clamp/repair out-of-range values to safe defaults.
+    pub fn sanitized(mut self) -> Self {
+        let d = AppConfig::default();
+        if self.theme != "slate" && self.theme != "terminal-green" {
+            self.theme = d.theme.clone();
+        }
+        if self.gen_length == 0 || self.gen_length > 256 {
+            self.gen_length = d.gen_length;
+        }
+        // At least one character class must be on.
+        if !(self.gen_lowercase || self.gen_uppercase || self.gen_digits || self.gen_symbols) {
+            self.gen_lowercase = true;
+            self.gen_uppercase = true;
+            self.gen_digits = true;
+            self.gen_symbols = true;
+        }
+        self
+    }
+
+    /// Parse from TOML text; malformed input falls back to defaults (never errors).
+    pub fn from_toml_or_default(text: &str) -> Self {
+        toml::from_str::<AppConfig>(text).unwrap_or_default().sanitized()
+    }
+
+    pub fn to_toml(&self) -> String {
+        toml::to_string_pretty(self).unwrap_or_default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults_are_sane() {
+        let c = AppConfig::default();
+        assert_eq!(c.auto_lock_secs, 600);
+        assert!(c.auto_save);
+        assert_eq!(c.theme, "slate");
+    }
+
+    #[test]
+    fn malformed_toml_falls_back_to_defaults() {
+        let c = AppConfig::from_toml_or_default("this is not valid toml =====");
+        assert_eq!(c, AppConfig::default());
+    }
+
+    #[test]
+    fn partial_toml_fills_missing_with_defaults() {
+        let c = AppConfig::from_toml_or_default("auto_lock_secs = 60");
+        assert_eq!(c.auto_lock_secs, 60);
+        assert!(c.auto_save); // default preserved
+    }
+
+    #[test]
+    fn invalid_theme_is_repaired() {
+        let c = AppConfig::from_toml_or_default("theme = \"neon-rave\"");
+        assert_eq!(c.theme, "slate");
+    }
+
+    #[test]
+    fn no_charset_enabled_is_repaired() {
+        let text = "gen_lowercase = false\ngen_uppercase = false\ngen_digits = false\ngen_symbols = false";
+        let c = AppConfig::from_toml_or_default(text);
+        assert!(c.gen_lowercase || c.gen_uppercase || c.gen_digits || c.gen_symbols);
+    }
+
+    #[test]
+    fn toml_round_trips() {
+        let c = AppConfig { auto_lock_secs: 300, theme: "terminal-green".into(), ..Default::default() };
+        let back = AppConfig::from_toml_or_default(&c.to_toml());
+        assert_eq!(c, back);
+    }
+}
