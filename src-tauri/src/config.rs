@@ -57,6 +57,23 @@ impl AppConfig {
             self.gen_digits = true;
             self.gen_symbols = true;
         }
+        // Reject dangerous vault paths (UNC, device namespace, relative). A None
+        // here falls back to the safe default location.
+        if let Some(p) = &self.vault_path {
+            let bad = p.starts_with(r"\\")          // UNC or device (\\.\, \\?\)
+                || p.trim().is_empty()
+                || !std::path::Path::new(p).is_absolute();
+            if bad {
+                self.vault_path = None;
+            }
+        }
+        // Clamp time-based security settings to sane maximums.
+        if self.auto_lock_secs > 86_400 {
+            self.auto_lock_secs = 86_400; // 24h ceiling
+        }
+        if self.clipboard_clear_secs > 3_600 {
+            self.clipboard_clear_secs = 3_600; // 1h ceiling
+        }
         self
     }
 
@@ -127,6 +144,34 @@ mod tests {
             "gen_lowercase = false\ngen_uppercase = false\ngen_digits = false\ngen_symbols = false";
         let c = AppConfig::from_toml_or_default(text);
         assert!(c.gen_lowercase || c.gen_uppercase || c.gen_digits || c.gen_symbols);
+    }
+
+    #[test]
+    fn rejects_unc_vault_path() {
+        let c =
+            AppConfig::from_toml_or_default("vault_path = \"\\\\\\\\attacker\\\\share\\\\v.dat\"");
+        assert_eq!(c.vault_path, None);
+    }
+
+    #[test]
+    fn rejects_relative_vault_path() {
+        let c = AppConfig::from_toml_or_default("vault_path = \"vault.dat\"");
+        assert_eq!(c.vault_path, None);
+    }
+
+    #[test]
+    fn keeps_absolute_vault_path() {
+        let c = AppConfig::from_toml_or_default("vault_path = \"C:\\\\Users\\\\me\\\\v.dat\"");
+        assert_eq!(c.vault_path.as_deref(), Some("C:\\Users\\me\\v.dat"));
+    }
+
+    #[test]
+    fn clamps_absurd_timeouts() {
+        let c = AppConfig::from_toml_or_default(
+            "auto_lock_secs = 999999999\nclipboard_clear_secs = 999999999",
+        );
+        assert_eq!(c.auto_lock_secs, 86_400);
+        assert_eq!(c.clipboard_clear_secs, 3_600);
     }
 
     #[test]

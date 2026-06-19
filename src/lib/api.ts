@@ -44,10 +44,9 @@ export const api = {
   listEntries: () => invoke<EntrySummary[]>("list_entries"),
   getEntry: (id: string, reveal: boolean) =>
     invoke<EntryDetail>("get_entry", { id, reveal }),
-  addEntry: (input: EntryInput, now: number) =>
-    invoke<string>("add_entry", { input, now }),
-  updateEntry: (id: string, input: EntryInput, now: number) =>
-    invoke<void>("update_entry", { id, input, now }),
+  addEntry: (input: EntryInput) => invoke<string>("add_entry", { input }),
+  updateEntry: (id: string, input: EntryInput) =>
+    invoke<void>("update_entry", { id, input }),
   deleteEntry: (id: string) => invoke<void>("delete_entry", { id }),
   saveVault: () => invoke<void>("save_vault"),
   generate: (req: Record<string, unknown>) => invoke<string>("generate", { req }),
