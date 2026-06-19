@@ -2523,6 +2523,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "protec-host"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "psl"
 version = "2.1.213"
 source = "registry+https://github.com/rust-lang/crates.io-index"
