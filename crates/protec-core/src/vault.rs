@@ -93,6 +93,46 @@ impl UnlockedVault {
     fn touch(&mut self) {
         self.last_activity = Instant::now();
     }
+
+    pub fn list_entries(&self) -> &[Entry] {
+        &self.entries
+    }
+
+    pub fn get(&self, id: uuid::Uuid) -> Option<&Entry> {
+        self.entries.iter().find(|e| e.id == id)
+    }
+
+    pub fn add(&mut self, entry: Entry) {
+        self.touch();
+        self.entries.push(entry);
+    }
+
+    pub fn update(&mut self, id: uuid::Uuid, updated: Entry) -> Result<(), VaultError> {
+        self.touch();
+        let slot = self
+            .entries
+            .iter_mut()
+            .find(|e| e.id == id)
+            .ok_or(VaultError::Corrupted)?;
+        *slot = updated;
+        Ok(())
+    }
+
+    pub fn delete(&mut self, id: uuid::Uuid) -> Result<(), VaultError> {
+        self.touch();
+        let before = self.entries.len();
+        self.entries.retain(|e| e.id != id);
+        if self.entries.len() == before {
+            return Err(VaultError::Corrupted);
+        }
+        Ok(())
+    }
+
+    /// Re-encrypt the current entries and write to disk atomically.
+    pub fn save(&self) -> Result<(), VaultError> {
+        let file = encrypt_body(self.header.clone(), &self.vault_key, &self.entries)?;
+        write_atomic(&self.path, &file.to_bytes()?)
+    }
 }
 
 // ---- internal helpers ----
@@ -154,5 +194,47 @@ mod tests {
         let locked = Vault::open(&path).unwrap();
         let res = locked.unlock("pw");
         assert!(matches!(res, Err(VaultError::Tampered)));
+    }
+
+    #[test]
+    fn add_save_reopen_persists_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.dat");
+        Vault::create(&path, "pw").unwrap();
+
+        {
+            let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
+            let mut e = Entry::new("GitHub", 1);
+            e.username = "octocat".into();
+            e.password = "s3cr3t".into();
+            v.add(e);
+            v.save().unwrap();
+        }
+
+        let v = Vault::open(&path).unwrap().unlock("pw").unwrap();
+        let list = v.list_entries();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].title, "GitHub");
+        assert_eq!(list[0].password, "s3cr3t");
+    }
+
+    #[test]
+    fn update_and_delete_work() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.dat");
+        Vault::create(&path, "pw").unwrap();
+        let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
+
+        let mut e = Entry::new("Site", 1);
+        let id = e.id;
+        v.add(e.clone());
+
+        e.password = "new".into();
+        v.update(id, e).unwrap();
+        assert_eq!(v.get(id).unwrap().password, "new");
+
+        v.delete(id).unwrap();
+        assert!(v.get(id).is_none());
+        assert!(matches!(v.delete(id), Err(VaultError::Corrupted)));
     }
 }
