@@ -8,6 +8,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@types/chrome": "^0.0.270",
     "typescript": "^5",
     "vite": "^5",
     "vitest": "^2",
