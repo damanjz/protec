@@ -56,6 +56,16 @@ jobs:
       - run: cargo clippy -p protec-host --all-targets -- -D warnings
       - run: cargo test -p protec-host
       - run: cargo build -p protec-host --release
+  hello:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy -p protec-hello --all-targets -- -D warnings
+      - run: cargo test -p protec-hello
+      - run: cargo build -p protec-hello
   ext:
     runs-on: ubuntu-latest
     defaults:

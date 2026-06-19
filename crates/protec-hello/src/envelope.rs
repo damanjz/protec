@@ -19,17 +19,17 @@ pub struct HelloWrapData;
 
 /// Compute the wrapping key for enabling Hello on a vault. Returns the 32-byte
 /// key the caller passes to `KeyWrap::seal(WrapKind::WindowsHello, key, vault_key)`.
-pub fn wrapping_key_for_enable(provider: &impl KeyProvider)
-    -> Result<Zeroizing<[u8; 32]>, HelloError>
-{
+pub fn wrapping_key_for_enable(
+    provider: &impl KeyProvider,
+) -> Result<Zeroizing<[u8; 32]>, HelloError> {
     provider.wrapping_key()
 }
 
 /// Compute the wrapping key for unlocking via Hello. Same key the enable step
 /// produced (the provider is deterministic for a given device + credential).
-pub fn wrapping_key_for_unlock(provider: &impl KeyProvider)
-    -> Result<Zeroizing<[u8; 32]>, HelloError>
-{
+pub fn wrapping_key_for_unlock(
+    provider: &impl KeyProvider,
+) -> Result<Zeroizing<[u8; 32]>, HelloError> {
     provider.wrapping_key()
 }
 
@@ -53,7 +53,10 @@ mod tests {
 
     #[test]
     fn enable_and_unlock_produce_the_same_key() {
-        let p = FakeProvider { key: [3u8; 32], fail: None };
+        let p = FakeProvider {
+            key: [3u8; 32],
+            fail: None,
+        };
         let a = wrapping_key_for_enable(&p).unwrap();
         let b = wrapping_key_for_unlock(&p).unwrap();
         assert_eq!(a.as_ref(), b.as_ref());
@@ -61,7 +64,10 @@ mod tests {
 
     #[test]
     fn provider_failure_propagates() {
-        let p = FakeProvider { key: [0u8; 32], fail: Some(HelloError::UserCancelled) };
+        let p = FakeProvider {
+            key: [0u8; 32],
+            fail: Some(HelloError::UserCancelled),
+        };
         assert_eq!(wrapping_key_for_unlock(&p), Err(HelloError::UserCancelled));
     }
 
@@ -70,11 +76,14 @@ mod tests {
     /// Hello wrap integrates with the core envelope without any TPM.
     #[test]
     fn envelope_round_trip_via_core_keywrap() {
-        let p = FakeProvider { key: [5u8; 32], fail: None };
+        let p = FakeProvider {
+            key: [5u8; 32],
+            fail: None,
+        };
         let vault_key = [8u8; 32];
         let wk = wrapping_key_for_enable(&p).unwrap();
-        let wrap = protec_core::KeyWrap::seal(
-            protec_core::WrapKind::WindowsHello, &wk, &vault_key).unwrap();
+        let wrap = protec_core::KeyWrap::seal(protec_core::WrapKind::WindowsHello, &wk, &vault_key)
+            .unwrap();
         let wk2 = wrapping_key_for_unlock(&p).unwrap();
         let recovered = wrap.open(&wk2).unwrap();
         assert_eq!(recovered.as_ref(), &vault_key);

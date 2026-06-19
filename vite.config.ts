@@ -5,4 +5,8 @@ export default defineConfig({
   plugins: [svelte()],
   clearScreen: false,
   server: { port: 1420, strictPort: true },
+  test: {
+    include: ["src/**/*.test.ts"],
+    exclude: ["extension/**", "node_modules/**", "dist/**"],
+  },
 });

@@ -30,18 +30,18 @@ fn ensure_credential() -> Result<(), HelloError> {
     let name = HSTRING::from(CRED_NAME);
     if let Ok(op) = KeyCredentialManager::OpenAsync(&name) {
         if let Ok(res) = op.get() {
-            if res.Status().map_err(|e| HelloError::Backend(e.code().0.to_string()))?
+            if res
+                .Status()
+                .map_err(|e| HelloError::Backend(e.code().0.to_string()))?
                 == KeyCredentialStatus::Success
             {
                 return Ok(());
             }
         }
     }
-    let op = KeyCredentialManager::RequestCreateAsync(
-        &name,
-        KeyCredentialCreationOption::FailIfExists,
-    )
-    .map_err(|e| HelloError::Backend(e.code().0.to_string()))?;
+    let op =
+        KeyCredentialManager::RequestCreateAsync(&name, KeyCredentialCreationOption::FailIfExists)
+            .map_err(|e| HelloError::Backend(e.code().0.to_string()))?;
     let res = op.get().map_err(|_| HelloError::UserCancelled)?;
     match res.Status() {
         Ok(KeyCredentialStatus::Success) => Ok(()),
@@ -75,7 +75,9 @@ fn derive_wrapping_key() -> Result<Zeroizing<[u8; 32]>, HelloError> {
         Ok(KeyCredentialStatus::NotFound) => return Err(HelloError::KeyMissing),
         _ => return Err(HelloError::Backend("open failed".into())),
     }
-    let cred = res.Credential().map_err(|e| HelloError::Backend(e.code().0.to_string()))?;
+    let cred = res
+        .Credential()
+        .map_err(|e| HelloError::Backend(e.code().0.to_string()))?;
 
     let buf = crypto_buffer_from(CHALLENGE)?;
     let sign_op = cred
@@ -88,7 +90,9 @@ fn derive_wrapping_key() -> Result<Zeroizing<[u8; 32]>, HelloError> {
         Ok(KeyCredentialStatus::NotFound) => return Err(HelloError::KeyMissing),
         _ => return Err(HelloError::Backend("sign failed".into())),
     }
-    let sig = sign_res.Result().map_err(|e| HelloError::Backend(e.code().0.to_string()))?;
+    let sig = sign_res
+        .Result()
+        .map_err(|e| HelloError::Backend(e.code().0.to_string()))?;
     let sig_bytes = Zeroizing::new(ibuffer_to_vec(&sig)?);
 
     // Derive the 32-byte wrapping key as SHA-256 of the TPM signature with a

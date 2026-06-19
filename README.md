@@ -21,6 +21,7 @@ A fully local, open-source password manager. Your secrets never leave your machi
 | `protec-cli`  | dropped | (skipped — see GUI) |
 | `protec-gui`  | available (dev) | desktop app (Tauri + Svelte) |
 | `protec-host` | available (dev) | native-messaging broker for the browser extension |
+| `protec-hello` | available (dev) | optional Windows Hello unlock |
 | `protec-extension` | available (dev) | browser autofill (Chrome/Edge/Firefox) |
 
 ## Running the GUI (development)
@@ -72,6 +73,15 @@ extension\scripts\register-host.ps1 -HostExe "<repo>\target\release\protec-host.
 ```
 
 The desktop app must be running and unlocked for autofill to work.
+
+### Windows Hello unlock (optional)
+
+On devices with a TPM and Windows Hello configured, Protec can unlock with your
+fingerprint, face, or PIN in addition to your master password. It is **opt-in**
+(enable it in Settings, or accept the offer when you first create your vault) and
+**additive** — your master password always still works. Hello uses a
+non-exportable, machine-bound TPM key; disabling it deletes that key. On devices
+without Hello, the option simply doesn't appear.
 
 ## License
 

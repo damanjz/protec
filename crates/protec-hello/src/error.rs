@@ -16,8 +16,14 @@ impl std::fmt::Display for HelloError {
         match self {
             HelloError::Unavailable => write!(f, "Windows Hello is not available on this device"),
             HelloError::UserCancelled => write!(f, "Windows Hello was cancelled"),
-            HelloError::KeyMissing => write!(f, "The Windows Hello key is missing — use your master password"),
-            HelloError::Backend(_) => write!(f, "Windows Hello could not be used — use your master password"),
+            HelloError::KeyMissing => write!(
+                f,
+                "The Windows Hello key is missing — use your master password"
+            ),
+            HelloError::Backend(_) => write!(
+                f,
+                "Windows Hello could not be used — use your master password"
+            ),
         }
     }
 }
