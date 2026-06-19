@@ -28,7 +28,11 @@ fn main() {
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             commands::settings::get_config,
-            commands::settings::set_config
+            commands::settings::set_config,
+            commands::auth::vault_status,
+            commands::auth::create_vault,
+            commands::auth::unlock,
+            commands::auth::lock
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
