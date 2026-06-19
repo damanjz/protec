@@ -86,11 +86,14 @@ where
                     }
                 }
             };
+            // Submit always returns Acknowledged (except when Locked) so a page
+            // cannot use the response to learn whether a password matched, an
+            // entry exists, or the user approved a save/update.
             match outcome {
                 SubmitOutcome::NoOp => Response::Acknowledged,
                 SubmitOutcome::Save => {
                     if !confirm(format!("Save new login for {origin}?")).await {
-                        return Response::Denied;
+                        return Response::Acknowledged;
                     }
                     let mut inner = state.lock();
                     if let VaultSlot::Unlocked(v) = &mut inner.slot {
@@ -107,7 +110,7 @@ where
                 }
                 SubmitOutcome::Update { id } => {
                     if !confirm(format!("Update password for {origin}?")).await {
-                        return Response::Denied;
+                        return Response::Acknowledged;
                     }
                     let mut inner = state.lock();
                     if let VaultSlot::Unlocked(v) = &mut inner.slot {

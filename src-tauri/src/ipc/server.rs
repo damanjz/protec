@@ -11,7 +11,10 @@ use tokio::sync::oneshot;
 pub fn spawn(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         loop {
-            let server = match ServerOptions::new().create(PIPE_NAME) {
+            let server = match ServerOptions::new()
+                .reject_remote_clients(true)
+                .create(PIPE_NAME)
+            {
                 Ok(s) => s,
                 Err(_) => {
                     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
@@ -55,7 +58,7 @@ async fn handle_conn(app: AppHandle, mut server: NamedPipeServer) -> std::io::Re
     if let Some(origin) = origin {
         let now = now_ms();
         let limiter = app.state::<RateLimitState>();
-        let allowed = limiter.0.lock().unwrap().check(&origin, now);
+        let allowed = limiter.0.lock().unwrap_or_else(|p| p.into_inner()).check(&origin, now);
         if !allowed {
             write_response(&mut server, &Response::Denied).await?;
             return Ok(());
@@ -86,7 +89,12 @@ async fn request_confirmation(app: AppHandle, prompt: String) -> bool {
     let (tx, rx) = oneshot::channel::<bool>();
     let pending = app.state::<PendingConfirm>();
     {
-        let mut guard = pending.0.lock().unwrap();
+        let mut guard = pending.0.lock().unwrap_or_else(|p| p.into_inner());
+        if guard.is_some() {
+            // A confirmation is already awaiting the user; deny the new one
+            // rather than silently invalidating the in-flight prompt.
+            return false;
+        }
         *guard = Some(tx);
     }
     if let Some(win) = app.get_webview_window("main") {
@@ -123,7 +131,7 @@ fn now_ms() -> u64 {
 /// Called by the frontend to answer the current confirmation prompt.
 #[tauri::command]
 pub fn answer_confirm(allow: bool, pending: tauri::State<PendingConfirm>) {
-    if let Some(tx) = pending.0.lock().unwrap().take() {
+    if let Some(tx) = pending.0.lock().unwrap_or_else(|p| p.into_inner()).take() {
         let _ = tx.send(allow);
     }
 }
