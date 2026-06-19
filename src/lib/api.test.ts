@@ -25,4 +25,22 @@ describe("api layer", () => {
     await api.copySecret("pw", 20);
     expect(invokeMock).toHaveBeenCalledWith("copy_secret", { text: "pw", clearSecs: 20 });
   });
+
+  it("helloStatus invokes hello_status", async () => {
+    invokeMock.mockResolvedValue({ available: true, enabled: false });
+    await api.helloStatus();
+    expect(invokeMock).toHaveBeenCalledWith("hello_status");
+  });
+
+  it("helloEnable invokes hello_enable", async () => {
+    invokeMock.mockResolvedValue(undefined);
+    await api.helloEnable();
+    expect(invokeMock).toHaveBeenCalledWith("hello_enable");
+  });
+
+  it("helloUnlock invokes hello_unlock", async () => {
+    invokeMock.mockResolvedValue(undefined);
+    await api.helloUnlock();
+    expect(invokeMock).toHaveBeenCalledWith("hello_unlock");
+  });
 });

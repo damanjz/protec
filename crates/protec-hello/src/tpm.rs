@@ -102,9 +102,9 @@ fn derive_wrapping_key() -> Result<Zeroizing<[u8; 32]>, HelloError> {
     hasher.update(b"protec-hello-kdf-v1");
     hasher.update(&sig_bytes);
     let digest = hasher.finalize();
-    let mut key = [0u8; 32];
+    let mut key = Zeroizing::new([0u8; 32]);
     key.copy_from_slice(&digest);
-    Ok(Zeroizing::new(key))
+    Ok(key)
 }
 
 fn crypto_buffer_from(bytes: &[u8]) -> Result<windows::Storage::Streams::IBuffer, HelloError> {

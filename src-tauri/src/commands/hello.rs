@@ -16,7 +16,12 @@ pub fn hello_status(state: State<AppState>) -> HelloStatus {
         let inner = state.lock();
         match &inner.slot {
             VaultSlot::Unlocked(v) => v.has_wrap(&WrapKind::WindowsHello),
-            VaultSlot::Locked => false,
+            VaultSlot::Locked => {
+                // Vault is locked: read the on-disk header to know if Hello is enabled.
+                protec_core::Vault::open(&inner.vault_path)
+                    .map(|locked| locked.has_wrap(&WrapKind::WindowsHello))
+                    .unwrap_or(false)
+            }
         }
     };
     HelloStatus { available, enabled }
@@ -54,13 +59,16 @@ pub fn hello_disable(state: State<AppState>) -> Result<(), String> {
     {
         let mut inner = state.lock();
         if let VaultSlot::Unlocked(v) = &mut inner.slot {
-            // Remove the wrap first (the vault is the source of truth).
-            let _ = v.remove_wrap(WrapKind::WindowsHello);
+            // Remove the wrap first (the vault is the source of truth). If this
+            // fails, do NOT delete the TPM key — that would orphan the wrap.
+            v.remove_wrap(WrapKind::WindowsHello)
+                .map_err(|_| "Failed to disable Windows Hello".to_string())?;
         } else {
             return Err("Unlock the vault first".into());
         }
     }
-    // Best-effort TPM key delete; a failure here is non-fatal (wrap already gone).
+    // Best-effort TPM key delete; the wrap is already gone so a delete failure is
+    // non-fatal (the orphaned TPM key is harmless and Hello-gated).
     let _ = hello_delete_key();
     Ok(())
 }

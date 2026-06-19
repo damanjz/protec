@@ -98,6 +98,12 @@ impl LockedVault {
             last_activity: Instant::now(),
         })
     }
+
+    /// True if the on-disk header contains a wrap of the given kind. Readable
+    /// without unlocking — used to know whether Hello is enabled for this vault.
+    pub fn has_wrap(&self, kind: &crate::wrap::WrapKind) -> bool {
+        self.file.header.wraps.iter().any(|w| &w.kind == kind)
+    }
 }
 
 /// An unlocked vault. ONLY this type exposes secret access. Keys wiped on drop.

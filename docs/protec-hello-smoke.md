@@ -8,6 +8,11 @@ TPM path cannot be unit-tested (no TPM/biometric in CI), so verify it by hand.
    click "Enable Windows Hello" → Hello prompts → succeeds → main view opens.
 3. **Hello unlock:** Lock (Ctrl+L) → the lock screen auto-offers Hello (or click the
    "Unlock with Windows Hello" button) → fingerprint/PIN → vault unlocks.
+3a. **Signature determinism (critical):** Lock and unlock with Hello **three times
+    in a row**. All three must succeed. This confirms the TPM signature for the
+    fixed challenge is deterministic — if any unlock fails while the master
+    password still works, Hello's wrapping key is not stable on this device and
+    the feature must not be relied upon there.
 4. **Golden rule:** Lock → ignore Hello → type the master password → still unlocks.
 5. **Settings toggle:** Settings → "Unlock with Windows Hello" shows enabled → toggle OFF →
    on next lock the Hello button no longer appears → toggle ON again → Hello prompts and
