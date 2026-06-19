@@ -37,6 +37,7 @@
       unlocked.set(true);
     } catch (e) {
       error = String(e);
+      pw = "";
       // If the vault looks damaged and a backup exists, offer to restore it.
       if (/damaged|corrupt|authentication/i.test(error)) {
         try { offerRestore = await invoke<boolean>("backup_available"); } catch { offerRestore = false; }

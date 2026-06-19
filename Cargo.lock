@@ -2514,6 +2514,7 @@ dependencies = [
  "protec-core",
  "protec-hello",
  "psl",
+ "rand_core",
  "serde",
  "serde_json",
  "tauri",

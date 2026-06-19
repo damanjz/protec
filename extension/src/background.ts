@@ -17,7 +17,8 @@ function sendNative(req: Request): Promise<Response> {
 
 // Content scripts ask the background to talk to the host (content scripts can't
 // use native messaging directly).
-chrome.runtime.onMessage.addListener((msg: Request, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg: Request, sender, sendResponse) => {
+  if (sender.id !== chrome.runtime.id) return; // reject cross-extension messages
   sendNative(msg).then(sendResponse);
   return true; // keep the channel open for the async response
 });

@@ -4,16 +4,18 @@
   import { invoke } from "@tauri-apps/api/core";
 
   let prompt: string | null = null;
+  let nonce = "";
   let unlisten: UnlistenFn | null = null;
 
   async function answer(allow: boolean) {
     prompt = null;
-    await invoke("answer_confirm", { allow });
+    await invoke("answer_confirm", { allow, nonce });
   }
 
   onMount(async () => {
-    unlisten = await listen<string>("protec://confirm", (e) => {
-      prompt = e.payload;
+    unlisten = await listen<{ prompt: string; nonce: string }>("protec://confirm", (e) => {
+      prompt = e.payload.prompt;
+      nonce = e.payload.nonce;
     });
     window.addEventListener("keydown", onKey);
   });
