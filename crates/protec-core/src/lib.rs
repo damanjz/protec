@@ -18,10 +18,12 @@ mod crypto;
 mod entry;
 mod error;
 mod format;
+mod generator;
 mod storage;
 mod vault;
 mod wrap;
 
 pub use entry::{CustomField, Entry, Totp};
 pub use error::VaultError;
+pub use generator::{generate_password, CharsetOptions};
 pub use vault::{LockedVault, UnlockedVault, Vault};
