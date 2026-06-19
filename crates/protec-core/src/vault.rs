@@ -78,8 +78,11 @@ pub struct UnlockedVault {
 impl UnlockedVault {
     pub fn lock(self) -> LockedVault {
         // vault_key is dropped (and zeroized) when self is consumed.
+        // Re-encryption uses a correctly-sized key and a fresh nonce, so AEAD
+        // encryption cannot fail here; bincode serialization of Vec<Entry> is
+        // likewise infallible. expect documents that invariant.
         let file = encrypt_body(self.header.clone(), &self.vault_key, &self.entries)
-            .unwrap_or_else(|_| panic!("re-seal on lock should not fail"));
+            .expect("re-seal on lock is infallible for valid key/nonce sizes");
         LockedVault { path: self.path, file }
     }
 
@@ -97,7 +100,9 @@ impl UnlockedVault {
 fn encrypt_body(header: Header, vault_key: &[u8; 32], entries: &[Entry])
     -> Result<VaultFile, VaultError>
 {
-    let plaintext = bincode::serialize(entries).map_err(|_| VaultError::Corrupted)?;
+    let plaintext = Zeroizing::new(
+        bincode::serialize(entries).map_err(|_| VaultError::Corrupted)?,
+    );
     let nonce = random_nonce();
     // aad binds the header to the body.
     let aad = bincode::serialize(&header).map_err(|_| VaultError::Corrupted)?;
@@ -107,7 +112,9 @@ fn encrypt_body(header: Header, vault_key: &[u8; 32], entries: &[Entry])
 
 fn decrypt_body(file: &VaultFile, vault_key: &[u8; 32]) -> Result<Vec<Entry>, VaultError> {
     let aad = file.header_aad()?;
-    let pt = decrypt(vault_key, &file.body_nonce, &file.body_ciphertext, &aad)?;
+    let pt = Zeroizing::new(
+        decrypt(vault_key, &file.body_nonce, &file.body_ciphertext, &aad)?,
+    );
     bincode::deserialize(&pt).map_err(|_| VaultError::Corrupted)
 }
 
@@ -146,6 +153,6 @@ mod tests {
         write_atomic(&path, &bytes).unwrap();
         let locked = Vault::open(&path).unwrap();
         let res = locked.unlock("pw");
-        assert!(res.is_err());
+        assert!(matches!(res, Err(VaultError::Tampered)));
     }
 }

@@ -30,8 +30,10 @@ impl KeyWrap {
 
     /// Recover the vault key. Auth failure => wrong wrapping key (e.g. wrong password).
     pub fn open(&self, wrapping_key: &[u8; 32]) -> Result<Zeroizing<[u8; 32]>, VaultError> {
-        let pt = decrypt(wrapping_key, &self.nonce, &self.wrapped, b"protec-keywrap")
-            .map_err(|_| VaultError::WrongPassword)?;
+        let pt = Zeroizing::new(
+            decrypt(wrapping_key, &self.nonce, &self.wrapped, b"protec-keywrap")
+                .map_err(|_| VaultError::WrongPassword)?,
+        );
         let arr: [u8; 32] = pt.as_slice().try_into().map_err(|_| VaultError::Corrupted)?;
         Ok(Zeroizing::new(arr))
     }
