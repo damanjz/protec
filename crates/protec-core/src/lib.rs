@@ -6,5 +6,7 @@
 mod error;
 mod crypto;
 mod wrap;
+mod entry;
 
 pub use error::VaultError;
+pub use entry::{CustomField, Entry, Totp};
