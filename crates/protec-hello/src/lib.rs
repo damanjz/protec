@@ -23,3 +23,25 @@ pub fn is_available() -> bool {
         false
     }
 }
+
+#[cfg(windows)]
+pub use tpm::TpmProvider;
+
+/// Produce the wrapping key to ENABLE Hello (prompts Hello, creates the TPM key
+/// if needed). The caller seals the vault key with this via core's KeyWrap.
+#[cfg(windows)]
+pub fn enable_wrapping_key() -> Result<zeroize::Zeroizing<[u8; 32]>, HelloError> {
+    wrapping_key_for_enable(&tpm::TpmProvider)
+}
+
+/// Produce the wrapping key to UNLOCK via Hello (prompts Hello).
+#[cfg(windows)]
+pub fn unlock_wrapping_key() -> Result<zeroize::Zeroizing<[u8; 32]>, HelloError> {
+    wrapping_key_for_unlock(&tpm::TpmProvider)
+}
+
+/// Delete Protec's TPM credential (DISABLE Hello).
+#[cfg(windows)]
+pub fn disable() -> Result<(), HelloError> {
+    tpm::delete_credential()
+}
