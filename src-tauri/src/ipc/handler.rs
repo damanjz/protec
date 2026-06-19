@@ -1,4 +1,6 @@
+use crate::ipc::protocol::{Request, Response};
 use crate::match_domain::origin_matches;
+use crate::state::{AppState, VaultSlot};
 use protec_core::Entry;
 
 /// A credential candidate found for an origin.
@@ -42,6 +44,93 @@ pub fn classify_submit(entries: &[Entry], origin: &str, username: &str, password
         Some(e) if e.password == password => SubmitOutcome::NoOp,
         Some(e) => SubmitOutcome::Update { id: e.id },
     }
+}
+
+/// Process one request against app state. `confirm` is an async gate the caller
+/// supplies (it raises the desktop prompt and resolves to true=Allow/false=Deny).
+/// Returns the Response to send back over the pipe.
+pub async fn process<F, Fut>(state: &AppState, req: Request, confirm: F) -> Response
+where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = bool>,
+{
+    match req {
+        Request::Status => {
+            let unlocked = matches!(state.lock().slot, VaultSlot::Unlocked(_));
+            Response::Status { unlocked }
+        }
+        Request::Find { origin } => {
+            let matches = {
+                let inner = state.lock();
+                match &inner.slot {
+                    VaultSlot::Locked => return Response::Locked,
+                    VaultSlot::Unlocked(v) => find_matches(v.list_entries(), &origin),
+                }
+            };
+            if matches.is_empty() {
+                return Response::NoMatch;
+            }
+            if !confirm(format!("Fill login for {origin}?")).await {
+                return Response::Denied;
+            }
+            let m = &matches[0];
+            Response::Credential { username: m.username.clone(), password: m.password.clone() }
+        }
+        Request::Submit { origin, username, password } => {
+            let outcome = {
+                let inner = state.lock();
+                match &inner.slot {
+                    VaultSlot::Locked => return Response::Locked,
+                    VaultSlot::Unlocked(v) => {
+                        classify_submit(v.list_entries(), &origin, &username, &password)
+                    }
+                }
+            };
+            match outcome {
+                SubmitOutcome::NoOp => Response::Acknowledged,
+                SubmitOutcome::Save => {
+                    if !confirm(format!("Save new login for {origin}?")).await {
+                        return Response::Denied;
+                    }
+                    let mut inner = state.lock();
+                    if let VaultSlot::Unlocked(v) = &mut inner.slot {
+                        let mut e = Entry::new(origin.clone(), now_secs());
+                        e.url = origin;
+                        e.username = username;
+                        e.password = password;
+                        v.add(e);
+                        let _ = v.save();
+                        Response::Acknowledged
+                    } else {
+                        Response::Locked
+                    }
+                }
+                SubmitOutcome::Update { id } => {
+                    if !confirm(format!("Update password for {origin}?")).await {
+                        return Response::Denied;
+                    }
+                    let mut inner = state.lock();
+                    if let VaultSlot::Unlocked(v) = &mut inner.slot {
+                        if let Some(existing) = v.get(id) {
+                            let mut updated = existing.clone();
+                            updated.password = password;
+                            updated.updated_at = now_secs();
+                            let _ = v.update(id, updated);
+                            let _ = v.save();
+                        }
+                        Response::Acknowledged
+                    } else {
+                        Response::Locked
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn now_secs() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
 #[cfg(test)]

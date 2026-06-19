@@ -8,6 +8,7 @@ mod match_domain;
 mod state;
 
 use config::AppConfig;
+use ipc::server::{PendingConfirm, RateLimitState};
 use state::AppState;
 use std::path::PathBuf;
 
@@ -30,6 +31,12 @@ fn main() {
 
     tauri::Builder::default()
         .manage(app_state)
+        .manage(PendingConfirm::default())
+        .manage(RateLimitState::default())
+        .setup(|app| {
+            ipc::server::spawn(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::settings::get_config,
             commands::settings::set_config,
@@ -46,7 +53,8 @@ fn main() {
             commands::entries::delete_entry,
             commands::entries::save_vault,
             commands::generator::generate,
-            commands::clipboard::copy_secret
+            commands::clipboard::copy_secret,
+            ipc::server::answer_confirm
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
