@@ -1,3 +1,6 @@
 /target
 **/*.dat
 **/*.bak
+
+# brainstorm companion artifacts
+.superpowers/
