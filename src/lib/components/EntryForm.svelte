@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { EntryInput, EntryDetail } from "../api";
   export let initial: EntryDetail | null = null;
+  export let injectedPassword: string | null = null;
   export let onSubmit: (input: EntryInput) => void;
   export let onCancel: () => void;
   export let onGenerate: () => Promise<string>;
@@ -11,6 +12,8 @@
   let url = initial?.url ?? "";
   let notes = initial?.notes ?? "";
   let tagsText = (initial?.tags ?? []).join(", ");
+
+  $: if (injectedPassword) password = injectedPassword;
 
   async function fillGenerated() {
     password = await onGenerate();

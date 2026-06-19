@@ -23,7 +23,7 @@
   let showPalette = false;
   let showGenerator = false;
   let showSettings = false;
-  let pendingFillNew = false;
+  let injectedPassword: string | null = null;
 
   function handleCommand(cmd: string) {
     if (cmd === "cmd:new") mode = "new";
@@ -63,6 +63,13 @@
 
   function globalActivity() { resetIdle(); }
 
+  async function onBlur() {
+    const cfg = await api.getConfig();
+    if (cfg.lock_on_blur === true) {
+      await lock();
+    }
+  }
+
   function notify(msg: string, kind: "info" | "error" = "info") {
     toast = msg; toastKind = kind;
     setTimeout(() => (toast = ""), 2500);
@@ -73,8 +80,10 @@
   }
 
   async function select(id: string) {
-    selectedId = id; revealed = false; mode = "view";
-    detail = await api.getEntry(id, false);
+    selectedId = id; mode = "view";
+    const cfg = await api.getConfig();
+    revealed = cfg.reveal_on_select === true;
+    detail = await api.getEntry(id, revealed);
   }
 
   async function reveal() {
@@ -85,11 +94,15 @@
 
   async function copyPw() {
     if (!selectedId) return;
-    const d = await api.getEntry(selectedId, true);
-    const cfg = await api.getConfig();
-    const clear = Number(cfg.clipboard_clear_secs ?? 20);
-    await api.copySecret(d.password, clear);
-    notify(`Copied${clear > 0 ? ` — clears in ${clear}s` : ""}`);
+    try {
+      const d = await api.getEntry(selectedId, true);
+      const cfg = await api.getConfig();
+      const clear = Number(cfg.clipboard_clear_secs ?? 20);
+      await api.copySecret(d.password, clear);
+      notify(`Copied${clear > 0 ? ` — clears in ${clear}s` : ""}`);
+    } catch (e) {
+      notify(String(e), "error");
+    }
   }
 
   async function persistIfAuto() {
@@ -98,29 +111,42 @@
   }
 
   async function submitNew(input: EntryInput) {
-    await api.addEntry(input, Math.floor(Date.now() / 1000));
-    await persistIfAuto();
-    await refresh();
-    mode = "view";
-    notify("Entry added");
+    try {
+      await api.addEntry(input, Math.floor(Date.now() / 1000));
+      await persistIfAuto();
+      await refresh();
+      mode = "view";
+      injectedPassword = null;
+      notify("Entry added");
+    } catch (e) {
+      notify(String(e), "error");
+    }
   }
 
   async function submitEdit(input: EntryInput) {
     if (!selectedId) return;
-    await api.updateEntry(selectedId, input, Math.floor(Date.now() / 1000));
-    await persistIfAuto();
-    await refresh();
-    await select(selectedId);
-    notify("Entry updated");
+    try {
+      await api.updateEntry(selectedId, input, Math.floor(Date.now() / 1000));
+      await persistIfAuto();
+      await refresh();
+      await select(selectedId);
+      notify("Entry updated");
+    } catch (e) {
+      notify(String(e), "error");
+    }
   }
 
   async function del() {
     if (!selectedId) return;
-    await api.deleteEntry(selectedId);
-    await persistIfAuto();
-    selectedId = null; detail = null;
-    await refresh();
-    notify("Entry deleted");
+    try {
+      await api.deleteEntry(selectedId);
+      await persistIfAuto();
+      selectedId = null; detail = null;
+      await refresh();
+      notify("Entry deleted");
+    } catch (e) {
+      notify(String(e), "error");
+    }
   }
 
   async function genPassword(): Promise<string> {
@@ -152,12 +178,14 @@
   if (typeof window !== "undefined") {
     window.addEventListener("keydown", globalKeydown);
     window.addEventListener("mousemove", globalActivity);
+    window.addEventListener("blur", onBlur);
     resetIdle();
   }
   onDestroy(() => {
     if (typeof window !== "undefined") {
       window.removeEventListener("keydown", globalKeydown);
       window.removeEventListener("mousemove", globalActivity);
+      window.removeEventListener("blur", onBlur);
     }
     if (idleTimer) clearTimeout(idleTimer);
   });
@@ -176,7 +204,7 @@
     <div class="pane list"><EntryList {items} {selectedId} onSelect={select} /></div>
     <div class="pane detail">
       {#if mode === "new"}
-        <EntryForm initial={null} onSubmit={submitNew} onCancel={() => (mode = "view")} onGenerate={genPassword} />
+        <EntryForm initial={null} injectedPassword={injectedPassword} onSubmit={submitNew} onCancel={() => { mode = "view"; injectedPassword = null; }} onGenerate={genPassword} />
       {:else if mode === "edit"}
         <EntryForm initial={detail} onSubmit={submitEdit} onCancel={() => (mode = "view")} onGenerate={genPassword} />
       {:else}
@@ -192,7 +220,7 @@
   {/if}
   {#if showGenerator}
     <GeneratorPanel onClose={() => (showGenerator = false)}
-      onUse={(pw) => { showGenerator = false; if (mode !== "edit") mode = "new"; pendingFillNew = pw.length > 0; }} />
+      onUse={(pw) => { showGenerator = false; injectedPassword = pw; if (mode !== "edit") mode = "new"; }} />
   {/if}
   {#if showSettings}
     <Settings onClose={() => (showSettings = false)} />

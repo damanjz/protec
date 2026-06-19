@@ -39,5 +39,10 @@ jobs:
       # Production bundle must use the Tauri CLI (NOT `cargo build`), which embeds
       # the frontend dist/ — a plain cargo build produces a binary that points at
       # the dev server (localhost) and cannot run standalone.
+      - name: Cache tauri-cli
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-tauri.exe
+          key: tauri-cli-v2-${{ runner.os }}
       - run: cargo install tauri-cli --version "^2" --locked
       - run: cargo tauri build

@@ -42,7 +42,7 @@
       <label><input type="checkbox" bind:checked={symbols} /> symbols</label>
       <label><input type="checkbox" bind:checked={excludeAmbiguous} /> exclude ambiguous</label>
     {:else}
-      <label>Words: {words}<input type="range" min="3" max="8" bind:value={words} /></label>
+      <label>Words: {words}<input type="range" min="4" max="8" bind:value={words} /></label>
       <label>Separator <input class="sep" bind:value={separator} /></label>
       <label><input type="checkbox" bind:checked={capitalize} /> capitalize</label>
     {/if}
