@@ -81,7 +81,11 @@ mod tests {
     fn sample() -> VaultFile {
         let params = KdfParams::recommended([5u8; 16]);
         let header = Header::new(&params, vec![]);
-        VaultFile { header, body_nonce: [1u8; 24], body_ciphertext: vec![9, 9, 9] }
+        VaultFile {
+            header,
+            body_nonce: [1u8; 24],
+            body_ciphertext: vec![9, 9, 9],
+        }
     }
 
     #[test]
@@ -97,7 +101,10 @@ mod tests {
         let mut f = sample();
         f.header.magic = *b"XXXXXX";
         let bytes = f.to_bytes().unwrap();
-        assert!(matches!(VaultFile::from_bytes(&bytes), Err(VaultError::Corrupted)));
+        assert!(matches!(
+            VaultFile::from_bytes(&bytes),
+            Err(VaultError::Corrupted)
+        ));
     }
 
     #[test]

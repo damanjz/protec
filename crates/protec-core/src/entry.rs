@@ -3,9 +3,9 @@ use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Totp {
-    pub secret: String,   // base32
-    pub digits: u8,       // typically 6
-    pub period: u16,      // seconds, typically 30
+    pub secret: String, // base32
+    pub digits: u8,     // typically 6
+    pub period: u16,    // seconds, typically 30
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -65,7 +65,11 @@ mod tests {
     fn entry_serde_round_trips() {
         let mut e = Entry::new("Email", 1);
         e.username = "me@example.com".into();
-        e.totp = Some(Totp { secret: "JBSWY3DPEHPK3PXP".into(), digits: 6, period: 30 });
+        e.totp = Some(Totp {
+            secret: "JBSWY3DPEHPK3PXP".into(),
+            digits: 6,
+            period: 30,
+        });
         let bytes = bincode::serialize(&e).unwrap();
         let back: Entry = bincode::deserialize(&bytes).unwrap();
         assert_eq!(e, back);

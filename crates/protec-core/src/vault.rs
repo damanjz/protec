@@ -32,7 +32,10 @@ impl Vault {
     pub fn open(path: impl AsRef<Path>) -> Result<LockedVault, VaultError> {
         let bytes = read_all(path.as_ref())?;
         let file = VaultFile::from_bytes(&bytes)?;
-        Ok(LockedVault { path: path.as_ref().to_path_buf(), file })
+        Ok(LockedVault {
+            path: path.as_ref().to_path_buf(),
+            file,
+        })
     }
 }
 
@@ -83,7 +86,10 @@ impl UnlockedVault {
         // likewise infallible. expect documents that invariant.
         let file = encrypt_body(self.header.clone(), &self.vault_key, &self.entries)
             .expect("re-seal on lock is infallible for valid key/nonce sizes");
-        LockedVault { path: self.path, file }
+        LockedVault {
+            path: self.path,
+            file,
+        }
     }
 
     pub fn is_expired(&self, timeout: std::time::Duration) -> bool {
@@ -137,24 +143,31 @@ impl UnlockedVault {
 
 // ---- internal helpers ----
 
-fn encrypt_body(header: Header, vault_key: &[u8; 32], entries: &[Entry])
-    -> Result<VaultFile, VaultError>
-{
-    let plaintext = Zeroizing::new(
-        bincode::serialize(entries).map_err(|_| VaultError::Corrupted)?,
-    );
+fn encrypt_body(
+    header: Header,
+    vault_key: &[u8; 32],
+    entries: &[Entry],
+) -> Result<VaultFile, VaultError> {
+    let plaintext = Zeroizing::new(bincode::serialize(entries).map_err(|_| VaultError::Corrupted)?);
     let nonce = random_nonce();
     // aad binds the header to the body.
     let aad = bincode::serialize(&header).map_err(|_| VaultError::Corrupted)?;
     let ct = encrypt(vault_key, &nonce, &plaintext, &aad)?;
-    Ok(VaultFile { header, body_nonce: nonce, body_ciphertext: ct })
+    Ok(VaultFile {
+        header,
+        body_nonce: nonce,
+        body_ciphertext: ct,
+    })
 }
 
 fn decrypt_body(file: &VaultFile, vault_key: &[u8; 32]) -> Result<Vec<Entry>, VaultError> {
     let aad = file.header_aad()?;
-    let pt = Zeroizing::new(
-        decrypt(vault_key, &file.body_nonce, &file.body_ciphertext, &aad)?,
-    );
+    let pt = Zeroizing::new(decrypt(
+        vault_key,
+        &file.body_nonce,
+        &file.body_ciphertext,
+        &aad,
+    )?);
     bincode::deserialize(&pt).map_err(|_| VaultError::Corrupted)
 }
 
@@ -178,7 +191,10 @@ mod tests {
         let path = dir.path().join("vault.dat");
         Vault::create(&path, "right").unwrap();
         let locked = Vault::open(&path).unwrap();
-        assert!(matches!(locked.unlock("wrong"), Err(VaultError::WrongPassword)));
+        assert!(matches!(
+            locked.unlock("wrong"),
+            Err(VaultError::WrongPassword)
+        ));
     }
 
     #[test]

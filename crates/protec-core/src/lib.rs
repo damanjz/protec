@@ -14,14 +14,14 @@
 //! let _ = locked.list_entries(); // ERROR: no method `list_entries` on LockedVault
 //! ```
 
-mod error;
 mod crypto;
-mod wrap;
 mod entry;
+mod error;
 mod format;
 mod storage;
 mod vault;
+mod wrap;
 
-pub use error::VaultError;
 pub use entry::{CustomField, Entry, Totp};
+pub use error::VaultError;
 pub use vault::{LockedVault, UnlockedVault, Vault};

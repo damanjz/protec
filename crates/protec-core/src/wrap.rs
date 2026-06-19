@@ -20,12 +20,18 @@ pub struct KeyWrap {
 
 impl KeyWrap {
     /// Wrap `vault_key` under `wrapping_key`.
-    pub fn seal(kind: WrapKind, wrapping_key: &[u8; 32], vault_key: &[u8; 32])
-        -> Result<Self, VaultError>
-    {
+    pub fn seal(
+        kind: WrapKind,
+        wrapping_key: &[u8; 32],
+        vault_key: &[u8; 32],
+    ) -> Result<Self, VaultError> {
         let nonce = random_nonce();
         let wrapped = encrypt(wrapping_key, &nonce, vault_key, b"protec-keywrap")?;
-        Ok(Self { kind, nonce, wrapped })
+        Ok(Self {
+            kind,
+            nonce,
+            wrapped,
+        })
     }
 
     /// Recover the vault key. Auth failure => wrong wrapping key (e.g. wrong password).
@@ -34,7 +40,10 @@ impl KeyWrap {
             decrypt(wrapping_key, &self.nonce, &self.wrapped, b"protec-keywrap")
                 .map_err(|_| VaultError::WrongPassword)?,
         );
-        let arr: [u8; 32] = pt.as_slice().try_into().map_err(|_| VaultError::Corrupted)?;
+        let arr: [u8; 32] = pt
+            .as_slice()
+            .try_into()
+            .map_err(|_| VaultError::Corrupted)?;
         Ok(Zeroizing::new(arr))
     }
 }

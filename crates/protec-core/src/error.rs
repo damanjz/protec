@@ -21,7 +21,10 @@ mod tests {
 
     #[test]
     fn wrong_password_and_tampered_have_distinct_variants_but_generic_messages() {
-        assert_eq!(VaultError::WrongPassword.to_string(), "incorrect master password");
+        assert_eq!(
+            VaultError::WrongPassword.to_string(),
+            "incorrect master password"
+        );
         assert_eq!(
             VaultError::Tampered.to_string(),
             "vault authentication failed (data was tampered with)"
