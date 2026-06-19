@@ -40,7 +40,9 @@ fn main() {
             commands::entries::add_entry,
             commands::entries::update_entry,
             commands::entries::delete_entry,
-            commands::entries::save_vault
+            commands::entries::save_vault,
+            commands::generator::generate,
+            commands::clipboard::copy_secret
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
