@@ -3,6 +3,7 @@
 mod commands;
 mod config;
 mod dto;
+mod match_domain;
 mod state;
 
 use config::AppConfig;
