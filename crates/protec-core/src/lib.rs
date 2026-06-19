@@ -9,6 +9,8 @@ mod wrap;
 mod entry;
 mod format;
 mod storage;
+mod vault;
 
 pub use error::VaultError;
 pub use entry::{CustomField, Entry, Totp};
+pub use vault::{LockedVault, UnlockedVault, Vault};
