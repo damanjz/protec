@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// User preferences. Holds NO secrets. Persisted as TOML.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -69,6 +70,24 @@ impl AppConfig {
     }
 }
 
+impl AppConfig {
+    /// Load config from `path`. Missing or malformed file => defaults (never errors).
+    pub fn load(path: &Path) -> Self {
+        match std::fs::read_to_string(path) {
+            Ok(text) => AppConfig::from_toml_or_default(&text),
+            Err(_) => AppConfig::default(),
+        }
+    }
+
+    /// Save config to `path`, creating parent dirs. Returns Err on IO failure.
+    pub fn save(&self, path: &Path) -> Result<(), String> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(path, self.to_toml()).map_err(|e| e.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -112,5 +131,24 @@ mod tests {
         let c = AppConfig { auto_lock_secs: 300, theme: "terminal-green".into(), ..Default::default() };
         let back = AppConfig::from_toml_or_default(&c.to_toml());
         assert_eq!(c, back);
+    }
+
+    #[test]
+    fn load_missing_file_returns_defaults() {
+        let dir = std::env::temp_dir().join("protec_cfg_missing_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("config.toml");
+        assert_eq!(AppConfig::load(&path), AppConfig::default());
+    }
+
+    #[test]
+    fn save_then_load_round_trips() {
+        let dir = std::env::temp_dir().join("protec_cfg_rt_test");
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("config.toml");
+        let c = AppConfig { theme: "terminal-green".into(), clipboard_clear_secs: 30, ..Default::default() };
+        c.save(&path).unwrap();
+        assert_eq!(AppConfig::load(&path), c);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

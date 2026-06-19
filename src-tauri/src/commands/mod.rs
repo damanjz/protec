@@ -1,1 +1,1 @@
-// Command modules are added in Phase C.
+pub mod settings;

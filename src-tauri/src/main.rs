@@ -16,7 +16,7 @@ fn default_vault_path() -> PathBuf {
 }
 
 fn main() {
-    let config = AppConfig::default(); // real load happens in a later task
+    let config = AppConfig::load(&commands::settings::config_path());
     let vault_path = config
         .vault_path
         .clone()
@@ -26,7 +26,10 @@ fn main() {
 
     tauri::Builder::default()
         .manage(app_state)
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![
+            commands::settings::get_config,
+            commands::settings::set_config
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
