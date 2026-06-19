@@ -83,7 +83,12 @@ impl LockedVault {
             .iter()
             .find(|w| w.kind == kind)
             .ok_or(VaultError::Corrupted)?;
-        let vault_key = wrap.open(wrapping_key)?;
+        let vault_key = wrap.open(wrapping_key).map_err(|e| match e {
+            // A failed unwrap here means the supplied (TPM-derived) key didn't
+            // authenticate — not a "wrong master password".
+            VaultError::WrongPassword => VaultError::Tampered,
+            other => other,
+        })?;
         let entries = decrypt_body(&self.file, &vault_key)?;
         Ok(UnlockedVault {
             path: self.path,
@@ -187,7 +192,7 @@ impl UnlockedVault {
     /// must never be removed; callers must not pass WrapKind::MasterPassword.
     pub fn remove_wrap(&mut self, kind: crate::wrap::WrapKind) -> Result<(), VaultError> {
         if kind == crate::wrap::WrapKind::MasterPassword {
-            return Err(VaultError::Corrupted); // guard: never remove the password wrap
+            return Err(VaultError::OperationNotAllowed); // never remove the password wrap
         }
         self.header.wraps.retain(|w| w.kind != kind);
         self.save()
@@ -382,13 +387,16 @@ mod tests {
             let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
             v.add(Entry::new("Site", 1));
             let vk = v.vault_key();
-            let wrap = crate::wrap::KeyWrap::seal(
-                crate::wrap::WrapKind::WindowsHello, &hello_key, &vk).unwrap();
+            let wrap =
+                crate::wrap::KeyWrap::seal(crate::wrap::WrapKind::WindowsHello, &hello_key, &vk)
+                    .unwrap();
             v.add_wrap(wrap).unwrap();
         }
 
-        let v = Vault::open(&path).unwrap()
-            .unlock_with_wrap(crate::wrap::WrapKind::WindowsHello, &hello_key).unwrap();
+        let v = Vault::open(&path)
+            .unwrap()
+            .unlock_with_wrap(crate::wrap::WrapKind::WindowsHello, &hello_key)
+            .unwrap();
         assert_eq!(v.list_entries().len(), 1);
     }
 
@@ -400,8 +408,9 @@ mod tests {
         {
             let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
             let vk = v.vault_key();
-            let wrap = crate::wrap::KeyWrap::seal(
-                crate::wrap::WrapKind::WindowsHello, &[7u8; 32], &vk).unwrap();
+            let wrap =
+                crate::wrap::KeyWrap::seal(crate::wrap::WrapKind::WindowsHello, &[7u8; 32], &vk)
+                    .unwrap();
             v.add_wrap(wrap).unwrap();
         }
         assert!(Vault::open(&path).unwrap().unlock("pw").is_ok());
@@ -415,8 +424,9 @@ mod tests {
         {
             let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
             let vk = v.vault_key();
-            let wrap = crate::wrap::KeyWrap::seal(
-                crate::wrap::WrapKind::WindowsHello, &[7u8; 32], &vk).unwrap();
+            let wrap =
+                crate::wrap::KeyWrap::seal(crate::wrap::WrapKind::WindowsHello, &[7u8; 32], &vk)
+                    .unwrap();
             v.add_wrap(wrap).unwrap();
             v.remove_wrap(crate::wrap::WrapKind::WindowsHello).unwrap();
             assert!(!v.has_wrap(&crate::wrap::WrapKind::WindowsHello));
@@ -430,6 +440,9 @@ mod tests {
         let path = dir.path().join("vault.dat");
         Vault::create(&path, "pw").unwrap();
         let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
-        assert!(v.remove_wrap(crate::wrap::WrapKind::MasterPassword).is_err());
+        assert!(matches!(
+            v.remove_wrap(crate::wrap::WrapKind::MasterPassword),
+            Err(VaultError::OperationNotAllowed)
+        ));
     }
 }
