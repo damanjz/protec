@@ -20,6 +20,16 @@ pub fn registrable_domain(url_or_origin: &str) -> Option<String> {
     Some(domain.to_string())
 }
 
+/// True if a saved entry URL should be offered for the given page origin.
+/// Both are reduced to their registrable domain and compared exactly — so
+/// `github.com` matches `www.github.com` but NOT `github.com.evil.com`.
+pub fn origin_matches(saved_url: &str, page_origin: &str) -> bool {
+    match (registrable_domain(saved_url), registrable_domain(page_origin)) {
+        (Some(a), Some(b)) => a == b,
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -48,5 +58,33 @@ mod tests {
     #[test]
     fn rejects_empty() {
         assert_eq!(registrable_domain(""), None);
+    }
+
+    #[test]
+    fn matches_same_registrable_domain() {
+        assert!(origin_matches("https://github.com", "https://www.github.com/login"));
+        assert!(origin_matches("https://accounts.github.com", "https://github.com"));
+    }
+
+    #[test]
+    fn rejects_lookalike_suffix_attack() {
+        // The classic phishing vector — must NOT match.
+        assert!(!origin_matches("https://github.com", "https://github.com.evil.com"));
+    }
+
+    #[test]
+    fn rejects_typosquat() {
+        assert!(!origin_matches("https://github.com", "https://g1thub.com"));
+    }
+
+    #[test]
+    fn rejects_unrelated_domain() {
+        assert!(!origin_matches("https://github.com", "https://paypal.com"));
+    }
+
+    #[test]
+    fn rejects_when_either_side_unparseable() {
+        assert!(!origin_matches("", "https://github.com"));
+        assert!(!origin_matches("https://github.com", ""));
     }
 }
