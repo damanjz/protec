@@ -9,6 +9,8 @@ pub enum VaultError {
     Corrupted,
     #[error("no entry with the given id")]
     NotFound,
+    #[error("operation not allowed")]
+    OperationNotAllowed,
     #[error("vault authentication failed (data was tampered with)")]
     Tampered,
     #[error("vault format version {0} is not supported")]

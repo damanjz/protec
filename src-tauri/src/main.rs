@@ -54,6 +54,10 @@ fn main() {
             commands::entries::save_vault,
             commands::generator::generate,
             commands::clipboard::copy_secret,
+            commands::hello::hello_status,
+            commands::hello::hello_enable,
+            commands::hello::hello_disable,
+            commands::hello::hello_unlock,
             ipc::server::answer_confirm
         ])
         .run(tauri::generate_context!())

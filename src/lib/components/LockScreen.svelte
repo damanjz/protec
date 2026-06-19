@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { api } from "../api";
   import { unlocked } from "../stores/vault";
   import { invoke } from "@tauri-apps/api/core";
@@ -6,8 +7,26 @@
   let pw = "";
   let error = "";
   let offerRestore = false;
-  // Hello seam: flipped on in sub-project 3. Kept false now.
-  const helloAvailable = false;
+  let helloAvailable = false;
+
+  onMount(async () => {
+    try {
+      const s = await api.helloStatus();
+      helloAvailable = s.available && s.enabled;
+    } catch {
+      helloAvailable = false;
+    }
+    if (helloAvailable) void unlockWithHello();
+  });
+
+  async function unlockWithHello() {
+    try {
+      await api.helloUnlock();
+      unlocked.set(true);
+    } catch {
+      error = "Use your master password.";
+    }
+  }
 
   async function doUnlock() {
     error = "";
@@ -47,7 +66,7 @@
     <button class="restore" on:click={restore}>Restore from backup (.bak)</button>
   {/if}
   {#if helloAvailable}
-    <button class="hello">Unlock with Windows Hello</button>
+    <button class="hello" on:click={unlockWithHello}>Unlock with Windows Hello</button>
   {/if}
 </div>
 

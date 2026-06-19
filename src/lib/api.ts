@@ -56,4 +56,8 @@ export const api = {
   getConfig: () => invoke<Record<string, unknown>>("get_config"),
   setConfig: (newConfig: Record<string, unknown>) =>
     invoke<void>("set_config", { newConfig }),
+  helloStatus: () => invoke<{ available: boolean; enabled: boolean }>("hello_status"),
+  helloEnable: () => invoke<void>("hello_enable"),
+  helloDisable: () => invoke<void>("hello_disable"),
+  helloUnlock: () => invoke<void>("hello_unlock"),
 };

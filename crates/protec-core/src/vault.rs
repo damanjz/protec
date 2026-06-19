@@ -67,6 +67,43 @@ impl LockedVault {
             last_activity: Instant::now(),
         })
     }
+
+    /// Unlock using a vault key recovered from a non-password wrap (e.g. the
+    /// Windows Hello wrap, whose wrapping key came from the TPM). The caller has
+    /// already produced `wrapping_key` via the external mechanism.
+    pub fn unlock_with_wrap(
+        self,
+        kind: crate::wrap::WrapKind,
+        wrapping_key: &[u8; 32],
+    ) -> Result<UnlockedVault, VaultError> {
+        let wrap = self
+            .file
+            .header
+            .wraps
+            .iter()
+            .find(|w| w.kind == kind)
+            .ok_or(VaultError::Corrupted)?;
+        let vault_key = wrap.open(wrapping_key).map_err(|e| match e {
+            // A failed unwrap here means the supplied (TPM-derived) key didn't
+            // authenticate — not a "wrong master password".
+            VaultError::WrongPassword => VaultError::Tampered,
+            other => other,
+        })?;
+        let entries = decrypt_body(&self.file, &vault_key)?;
+        Ok(UnlockedVault {
+            path: self.path,
+            header: self.file.header,
+            vault_key,
+            entries,
+            last_activity: Instant::now(),
+        })
+    }
+
+    /// True if the on-disk header contains a wrap of the given kind. Readable
+    /// without unlocking — used to know whether Hello is enabled for this vault.
+    pub fn has_wrap(&self, kind: &crate::wrap::WrapKind) -> bool {
+        self.file.header.wraps.iter().any(|w| &w.kind == kind)
+    }
 }
 
 /// An unlocked vault. ONLY this type exposes secret access. Keys wiped on drop.
@@ -141,6 +178,35 @@ impl UnlockedVault {
     pub fn save(&self) -> Result<(), VaultError> {
         let file = encrypt_body(self.header.clone(), &self.vault_key, &self.entries)?;
         write_atomic(&self.path, &file.to_bytes()?)
+    }
+
+    /// Expose a copy of the vault key so an additional wrap (e.g. Windows Hello)
+    /// can be created. Only available on an already-unlocked vault.
+    pub fn vault_key(&self) -> Zeroizing<[u8; 32]> {
+        Zeroizing::new(*self.vault_key)
+    }
+
+    /// Add a pre-built key-wrap to the header and persist. Replaces any existing
+    /// wrap of the same kind (so re-enabling Hello overwrites the old wrap).
+    pub fn add_wrap(&mut self, wrap: crate::wrap::KeyWrap) -> Result<(), VaultError> {
+        self.header.wraps.retain(|w| w.kind != wrap.kind);
+        self.header.wraps.push(wrap);
+        self.save()
+    }
+
+    /// Remove all wraps of the given kind and persist. The MasterPassword wrap
+    /// must never be removed; callers must not pass WrapKind::MasterPassword.
+    pub fn remove_wrap(&mut self, kind: crate::wrap::WrapKind) -> Result<(), VaultError> {
+        if kind == crate::wrap::WrapKind::MasterPassword {
+            return Err(VaultError::OperationNotAllowed); // never remove the password wrap
+        }
+        self.header.wraps.retain(|w| w.kind != kind);
+        self.save()
+    }
+
+    /// True if the header contains a wrap of the given kind.
+    pub fn has_wrap(&self, kind: &crate::wrap::WrapKind) -> bool {
+        self.header.wraps.iter().any(|w| &w.kind == kind)
     }
 }
 
@@ -313,6 +379,76 @@ mod tests {
         assert!(matches!(
             res,
             Err(VaultError::Tampered) | Err(VaultError::WrongPassword)
+        ));
+    }
+
+    #[test]
+    fn add_then_unlock_with_second_wrap() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.dat");
+        Vault::create(&path, "pw").unwrap();
+
+        let hello_key = [7u8; 32];
+        {
+            let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
+            v.add(Entry::new("Site", 1));
+            let vk = v.vault_key();
+            let wrap =
+                crate::wrap::KeyWrap::seal(crate::wrap::WrapKind::WindowsHello, &hello_key, &vk)
+                    .unwrap();
+            v.add_wrap(wrap).unwrap();
+        }
+
+        let v = Vault::open(&path)
+            .unwrap()
+            .unlock_with_wrap(crate::wrap::WrapKind::WindowsHello, &hello_key)
+            .unwrap();
+        assert_eq!(v.list_entries().len(), 1);
+    }
+
+    #[test]
+    fn password_still_works_after_adding_hello_wrap() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.dat");
+        Vault::create(&path, "pw").unwrap();
+        {
+            let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
+            let vk = v.vault_key();
+            let wrap =
+                crate::wrap::KeyWrap::seal(crate::wrap::WrapKind::WindowsHello, &[7u8; 32], &vk)
+                    .unwrap();
+            v.add_wrap(wrap).unwrap();
+        }
+        assert!(Vault::open(&path).unwrap().unlock("pw").is_ok());
+    }
+
+    #[test]
+    fn remove_hello_wrap_keeps_password() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.dat");
+        Vault::create(&path, "pw").unwrap();
+        {
+            let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
+            let vk = v.vault_key();
+            let wrap =
+                crate::wrap::KeyWrap::seal(crate::wrap::WrapKind::WindowsHello, &[7u8; 32], &vk)
+                    .unwrap();
+            v.add_wrap(wrap).unwrap();
+            v.remove_wrap(crate::wrap::WrapKind::WindowsHello).unwrap();
+            assert!(!v.has_wrap(&crate::wrap::WrapKind::WindowsHello));
+        }
+        assert!(Vault::open(&path).unwrap().unlock("pw").is_ok());
+    }
+
+    #[test]
+    fn cannot_remove_master_password_wrap() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.dat");
+        Vault::create(&path, "pw").unwrap();
+        let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
+        assert!(matches!(
+            v.remove_wrap(crate::wrap::WrapKind::MasterPassword),
+            Err(VaultError::OperationNotAllowed)
         ));
     }
 }

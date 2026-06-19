@@ -3,11 +3,11 @@ use crate::error::VaultError;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
-/// Identifies which mechanism wraps the vault key. Hello adds a variant later.
+/// Identifies which mechanism wraps the vault key.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WrapKind {
     MasterPassword,
-    // WindowsHello,  // added in sub-project 4
+    WindowsHello,
 }
 
 /// A single encrypted copy of the vault key, wrapped by some wrapping key.
@@ -77,5 +77,25 @@ mod tests {
         let w2 = KeyWrap::seal(WrapKind::MasterPassword, &hello_key, &vault_key).unwrap();
         assert_eq!(w1.open(&pw_key).unwrap().as_ref(), &vault_key);
         assert_eq!(w2.open(&hello_key).unwrap().as_ref(), &vault_key);
+    }
+
+    #[test]
+    fn windows_hello_wrap_round_trips() {
+        // A Hello wrap uses a different wrapping key than the master-password wrap,
+        // but the seal/open envelope is identical.
+        let vault_key = [4u8; 32];
+        let hello_key = [9u8; 32];
+        let w = KeyWrap::seal(WrapKind::WindowsHello, &hello_key, &vault_key).unwrap();
+        assert_eq!(w.kind, WrapKind::WindowsHello);
+        assert_eq!(w.open(&hello_key).unwrap().as_ref(), &vault_key);
+    }
+
+    #[test]
+    fn windows_hello_wrap_serde_round_trips() {
+        let w = KeyWrap::seal(WrapKind::WindowsHello, &[9u8; 32], &[4u8; 32]).unwrap();
+        let bytes = bincode::serialize(&w).unwrap();
+        let back: KeyWrap = bincode::deserialize(&bytes).unwrap();
+        assert_eq!(w, back);
+        assert_eq!(back.kind, WrapKind::WindowsHello);
     }
 }

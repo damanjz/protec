@@ -2512,6 +2512,7 @@ version = "0.1.0"
 dependencies = [
  "arboard",
  "protec-core",
+ "protec-hello",
  "psl",
  "serde",
  "serde_json",
@@ -2521,6 +2522,17 @@ dependencies = [
  "toml 0.8.23",
  "url",
  "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "protec-hello"
+version = "0.1.0"
+dependencies = [
+ "protec-core",
+ "sha2",
+ "windows",
+ "zeroize",
 ]
 
 [[package]]
