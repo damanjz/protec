@@ -2524,6 +2524,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "protec-hello"
+version = "0.1.0"
+dependencies = [
+ "protec-core",
+ "sha2",
+ "windows",
+ "zeroize",
+]
+
+[[package]]
 name = "protec-host"
 version = "0.1.0"
 dependencies = [
