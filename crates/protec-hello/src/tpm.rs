@@ -63,7 +63,7 @@ pub fn delete_credential() -> Result<(), HelloError> {
 
 /// Sign the fixed challenge with Protec's Hello key (prompts Hello), then hash
 /// the signature to a stable 32-byte wrapping key.
-fn derive_wrapping_key() -> Result<Zeroizing<[u8; 32]>, HelloError> {
+fn derive_wrapping_key(salt: &[u8; 16]) -> Result<Zeroizing<[u8; 32]>, HelloError> {
     ensure_credential()?;
     let name = HSTRING::from(CRED_NAME);
     let res = KeyCredentialManager::OpenAsync(&name)
@@ -96,10 +96,13 @@ fn derive_wrapping_key() -> Result<Zeroizing<[u8; 32]>, HelloError> {
     let sig_bytes = Zeroizing::new(ibuffer_to_vec(&sig)?);
 
     // Derive the 32-byte wrapping key as SHA-256 of the TPM signature with a
-    // domain-separation prefix. The signature is deterministic for a fixed
-    // challenge + this device's key, so enable and unlock produce the same key.
+    // domain-separation prefix AND a per-vault salt. The signature is
+    // deterministic for a fixed challenge + this device's key, so enable and
+    // unlock produce the same key for the same vault; mixing in the per-vault
+    // salt ensures two vaults on the same device get distinct wrapping keys.
     let mut hasher = Sha256::new();
     hasher.update(b"protec-hello-kdf-v1");
+    hasher.update(salt);
     hasher.update(&sig_bytes);
     let digest = hasher.finalize();
     let mut key = Zeroizing::new([0u8; 32]);
@@ -125,7 +128,7 @@ fn ibuffer_to_vec(buf: &windows::Storage::Streams::IBuffer) -> Result<Vec<u8>, H
 pub struct TpmProvider;
 
 impl KeyProvider for TpmProvider {
-    fn wrapping_key(&self) -> Result<Zeroizing<[u8; 32]>, HelloError> {
-        derive_wrapping_key()
+    fn wrapping_key(&self, salt: &[u8; 16]) -> Result<Zeroizing<[u8; 32]>, HelloError> {
+        derive_wrapping_key(salt)
     }
 }

@@ -20,7 +20,15 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), VaultError> {
     Ok(())
 }
 
+/// Maximum vault file size we will read. A legitimate vault is far smaller;
+/// this caps allocation from a hostile or corrupt file.
+const MAX_VAULT_BYTES: u64 = 64 * 1024 * 1024; // 64 MiB
+
 pub fn read_all(path: &Path) -> Result<Vec<u8>, VaultError> {
+    let meta = std::fs::metadata(path)?;
+    if meta.len() > MAX_VAULT_BYTES {
+        return Err(VaultError::Corrupted);
+    }
     Ok(fs::read(path)?)
 }
 
@@ -63,5 +71,15 @@ mod tests {
         assert_eq!(read_all(&path).unwrap(), b"v2");
         let bak = dir.path().join("vault.dat.bak");
         assert_eq!(read_all(&bak).unwrap(), b"v1");
+    }
+
+    #[test]
+    fn read_all_rejects_oversized_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.dat");
+        // Write a file just over the cap by setting length (sparse if supported).
+        let f = std::fs::File::create(&path).unwrap();
+        f.set_len(64 * 1024 * 1024 + 1).unwrap();
+        assert!(matches!(read_all(&path), Err(VaultError::Corrupted)));
     }
 }

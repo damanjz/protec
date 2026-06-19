@@ -34,15 +34,16 @@ pub fn hello_enable(state: State<AppState>) -> Result<(), String> {
     if !protec_hello::is_available() {
         return Err("Windows Hello is not available on this device".into());
     }
-    // Snapshot the vault key under the lock, then drop the lock before the Hello prompt.
-    let vault_key = {
+    // Snapshot the vault key and per-vault salt under the lock, then drop the
+    // lock before the Hello prompt.
+    let (vault_key, salt) = {
         let inner = state.lock();
         match &inner.slot {
-            VaultSlot::Unlocked(v) => v.vault_key(),
+            VaultSlot::Unlocked(v) => (v.vault_key(), v.kdf_salt()),
             VaultSlot::Locked => return Err("Unlock the vault first".into()),
         }
     };
-    let wrapping_key = hello_wrapping_key_enable().map_err(|e| e.to_string())?;
+    let wrapping_key = hello_wrapping_key_enable(&salt).map_err(|e| e.to_string())?;
     let wrap = KeyWrap::seal(WrapKind::WindowsHello, &wrapping_key, &vault_key)
         .map_err(|_| "Failed to wrap the vault key".to_string())?;
     let mut inner = state.lock();
@@ -81,32 +82,49 @@ pub fn hello_unlock(state: State<AppState>) -> Result<(), String> {
     if !protec_hello::is_available() {
         return Err("Windows Hello is not available".into());
     }
-    let wrapping_key = hello_wrapping_key_unlock().map_err(|e| e.to_string())?;
-    let mut inner = state.lock();
-    let path = inner.vault_path.clone();
+    // Snapshot the vault path under the lock, then drop the lock before opening
+    // the vault / prompting Hello (golden rule: never hold the lock across a
+    // prompt). Open the LockedVault to read the per-vault salt that the Hello KDF
+    // needs — this must match the salt used at enable time so the wrapping key
+    // reproduces.
+    let path = {
+        let inner = state.lock();
+        inner.vault_path.clone()
+    };
     let locked = protec_core::Vault::open(&path).map_err(|_| "Could not open vault".to_string())?;
+    let salt = locked.kdf_salt();
+    let wrapping_key = hello_wrapping_key_unlock(&salt).map_err(|e| e.to_string())?;
     let unlocked = locked
         .unlock_with_wrap(WrapKind::WindowsHello, &wrapping_key)
         .map_err(|_| "Windows Hello unlock failed — use your master password".to_string())?;
+    let mut inner = state.lock();
     inner.slot = VaultSlot::Unlocked(unlocked);
     Ok(())
 }
 
 // ---- platform shims so non-Windows builds compile ----
 #[cfg(windows)]
-fn hello_wrapping_key_enable() -> Result<zeroize::Zeroizing<[u8; 32]>, protec_hello::HelloError> {
-    protec_hello::enable_wrapping_key()
+fn hello_wrapping_key_enable(
+    salt: &[u8; 16],
+) -> Result<zeroize::Zeroizing<[u8; 32]>, protec_hello::HelloError> {
+    protec_hello::enable_wrapping_key(salt)
 }
 #[cfg(not(windows))]
-fn hello_wrapping_key_enable() -> Result<zeroize::Zeroizing<[u8; 32]>, protec_hello::HelloError> {
+fn hello_wrapping_key_enable(
+    _salt: &[u8; 16],
+) -> Result<zeroize::Zeroizing<[u8; 32]>, protec_hello::HelloError> {
     Err(protec_hello::HelloError::Unavailable)
 }
 #[cfg(windows)]
-fn hello_wrapping_key_unlock() -> Result<zeroize::Zeroizing<[u8; 32]>, protec_hello::HelloError> {
-    protec_hello::unlock_wrapping_key()
+fn hello_wrapping_key_unlock(
+    salt: &[u8; 16],
+) -> Result<zeroize::Zeroizing<[u8; 32]>, protec_hello::HelloError> {
+    protec_hello::unlock_wrapping_key(salt)
 }
 #[cfg(not(windows))]
-fn hello_wrapping_key_unlock() -> Result<zeroize::Zeroizing<[u8; 32]>, protec_hello::HelloError> {
+fn hello_wrapping_key_unlock(
+    _salt: &[u8; 16],
+) -> Result<zeroize::Zeroizing<[u8; 32]>, protec_hello::HelloError> {
     Err(protec_hello::HelloError::Unavailable)
 }
 #[cfg(windows)]
