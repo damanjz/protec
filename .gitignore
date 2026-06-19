@@ -4,3 +4,9 @@
 
 # brainstorm companion artifacts
 .superpowers/
+
+# frontend / tauri
+node_modules/
+dist/
+src-tauri/gen/
+app-icon.png

@@ -1,11 +1,21 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Totp {
     pub secret: String, // base32
     pub digits: u8,     // typically 6
     pub period: u16,    // seconds, typically 30
+}
+
+impl std::fmt::Debug for Totp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Totp")
+            .field("secret", &"<redacted>")
+            .field("digits", &self.digits)
+            .field("period", &self.period)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -14,7 +24,7 @@ pub struct CustomField {
     pub value: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
     pub id: Uuid,
     pub title: String,
@@ -27,6 +37,24 @@ pub struct Entry {
     pub custom_fields: Vec<CustomField>,
     pub created_at: u64, // unix seconds
     pub updated_at: u64,
+}
+
+impl std::fmt::Debug for Entry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Entry")
+            .field("id", &self.id)
+            .field("title", &self.title)
+            .field("username", &self.username)
+            .field("password", &"<redacted>")
+            .field("url", &self.url)
+            .field("notes", &self.notes)
+            .field("tags", &self.tags)
+            .field("totp", &self.totp)
+            .field("custom_fields", &self.custom_fields)
+            .field("created_at", &self.created_at)
+            .field("updated_at", &self.updated_at)
+            .finish()
+    }
 }
 
 impl Entry {
