@@ -10,6 +10,7 @@
   import GeneratorPanel from "./GeneratorPanel.svelte";
   import Settings from "./Settings.svelte";
   import { theme } from "../stores/vault";
+  import { modShortcut } from "../platform";
   import { onDestroy } from "svelte";
 
   let items: EntrySummary[] = [];
@@ -197,8 +198,8 @@
   <div class="topbar">
     <span class="brand">protec</span>
     <span class="status">● unlocked</span>
-    <button on:click={() => (mode = "new")}>＋ New ⌘N</button>
-    <button on:click={lock}>Lock ⌘L</button>
+    <button on:click={() => (mode = "new")}>＋ New {modShortcut("N")}</button>
+    <button on:click={lock}>Lock {modShortcut("L")}</button>
   </div>
   <div class="body">
     <div class="pane list"><EntryList {items} {selectedId} onSelect={select} /></div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { EntryDetail } from "../api";
+  import { modShortcut } from "../platform";
   export let detail: EntryDetail | null = null;
   export let revealed = false;
   export let onCopy: () => void;
@@ -23,7 +24,7 @@
       <div class="v pw">
         <span>{detail.password}</span>
         <button on:click={onReveal}>{revealed ? "hide" : "reveal"}</button>
-        <button on:click={onCopy}>copy ⌘C</button>
+        <button on:click={onCopy}>copy {modShortcut("C")}</button>
       </div>
     </div>
     {#if detail.url}<div class="fld"><div class="k">url</div><div class="v">{detail.url}</div></div>{/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { EntrySummary } from "../api";
+  import { modShortcut } from "../platform";
   export let items: EntrySummary[] = [];
   export let selectedId: string | null = null;
   export let onSelect: (id: string) => void;
@@ -14,7 +15,7 @@
     </div>
   {/each}
   {#if items.length === 0}
-    <div class="empty">No entries yet. Press ⌘K → New entry.</div>
+    <div class="empty">No entries yet. Press {modShortcut("K")} → New entry.</div>
   {/if}
 </div>
 
