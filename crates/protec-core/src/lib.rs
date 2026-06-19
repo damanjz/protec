@@ -4,5 +4,6 @@
 //! locked/unlocked API. No UI, no network.
 
 mod error;
+mod crypto;
 
 pub use error::VaultError;
