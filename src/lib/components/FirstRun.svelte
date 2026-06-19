@@ -1,0 +1,43 @@
+<script lang="ts">
+  import { api } from "../api";
+  import { vaultExists, unlocked } from "../stores/vault";
+
+  let pw = "";
+  let confirm = "";
+  let error = "";
+
+  async function create() {
+    error = "";
+    if (pw.length < 1) { error = "Choose a master password"; return; }
+    if (pw !== confirm) { error = "Passwords do not match"; return; }
+    try {
+      await api.createVault(pw);
+      await api.unlock(pw);
+      vaultExists.set(true);
+      unlocked.set(true);
+    } catch (e) {
+      error = String(e);
+    }
+  }
+</script>
+
+<div class="wrap">
+  <h1>protec</h1>
+  <p class="sub">Create your vault</p>
+  <input type="password" placeholder="Master password" bind:value={pw} />
+  <input type="password" placeholder="Confirm password" bind:value={confirm}
+         on:keydown={(e) => e.key === "Enter" && create()} />
+  {#if error}<p class="err">{error}</p>{/if}
+  <button on:click={create}>Create vault →</button>
+</div>
+
+<style>
+  .wrap { max-width: 320px; margin: 18vh auto; display: flex; flex-direction: column; gap: 10px; }
+  h1 { margin: 0; color: var(--accent); }
+  .sub { color: var(--text-dim); margin: 0 0 8px; }
+  input { padding: 9px 11px; background: var(--bg-elev); border: 1px solid var(--border);
+          color: var(--text); border-radius: 6px; font-family: var(--mono); }
+  button { padding: 9px; background: var(--accent); color: #fff; border: 0;
+           border-radius: 6px; cursor: pointer; }
+  .err { color: var(--danger); margin: 0; font-size: 12px; }
+</style>
