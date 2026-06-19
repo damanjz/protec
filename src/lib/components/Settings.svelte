@@ -6,8 +6,31 @@
 
   let cfg: Record<string, unknown> = {};
   let saved = false;
+  let helloAvailable = false;
+  let helloEnabled = false;
 
-  onMount(async () => { cfg = await api.getConfig(); });
+  onMount(async () => {
+    cfg = await api.getConfig();
+    try {
+      const s = await api.helloStatus();
+      helloAvailable = s.available;
+      helloEnabled = s.enabled;
+    } catch { helloAvailable = false; }
+  });
+
+  async function toggleHello() {
+    try {
+      if (helloEnabled) {
+        await api.helloDisable();
+        helloEnabled = false;
+      } else {
+        await api.helloEnable();
+        helloEnabled = true;
+      }
+    } catch (e) {
+      alert(String(e));
+    }
+  }
 
   async function save() {
     await api.setConfig(cfg);
@@ -36,6 +59,12 @@
       </select>
     </label>
     <label>Generator length <input type="number" min="1" max="256" bind:value={cfg.gen_length} /></label>
+    {#if helloAvailable}
+      <label>Unlock with Windows Hello
+        <input type="checkbox" checked={helloEnabled} on:change={toggleHello} />
+      </label>
+      <p class="hint">Your master password will still work.</p>
+    {/if}
     <div class="row">
       <button class="primary" on:click={save}>Save</button>
       <button on:click={onClose}>Close</button>
@@ -59,4 +88,5 @@
     border-radius: 6px; padding: 6px 12px; cursor: pointer; }
   .primary { background: var(--accent); color: #fff; border: 0; }
   .ok { color: var(--live); font-size: 12px; }
+  .hint { color: var(--text-dim); font-size: 11px; margin: -4px 0 0; }
 </style>
