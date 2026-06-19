@@ -104,6 +104,8 @@ async fn write_response(server: &mut NamedPipeServer, resp: &Response) -> std::i
 /// Raise the desktop confirmation prompt and await Allow/Deny. Emits an event
 /// the frontend listens for; the frontend replies via answer_confirm.
 async fn request_confirmation(app: AppHandle, prompt: String) -> bool {
+    use rand_core::RngCore;
+    let nonce = rand_core::OsRng.next_u64();
     let (tx, rx) = oneshot::channel::<bool>();
     let pending = app.state::<PendingConfirm>();
     {
@@ -113,17 +115,31 @@ async fn request_confirmation(app: AppHandle, prompt: String) -> bool {
             // rather than silently invalidating the in-flight prompt.
             return false;
         }
-        *guard = Some(tx);
+        *guard = Some((nonce, tx));
     }
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.set_focus();
     }
-    let _ = app.emit("protec://confirm", prompt);
+    // Send the nonce as a STRING to avoid JS number-precision loss on a u64;
+    // the frontend echoes the same string back in answer_confirm.
+    #[derive(serde::Serialize, Clone)]
+    struct ConfirmPayload {
+        prompt: String,
+        nonce: String,
+    }
+    let _ = app.emit(
+        "protec://confirm",
+        ConfirmPayload {
+            prompt,
+            nonce: nonce.to_string(),
+        },
+    );
     rx.await.unwrap_or(false)
 }
 
-/// Holds the in-flight confirmation responder. Registered as managed state.
-pub struct PendingConfirm(pub std::sync::Mutex<Option<oneshot::Sender<bool>>>);
+/// Holds the in-flight confirmation responder along with the correlation nonce
+/// the frontend must echo back. Registered as managed state.
+pub struct PendingConfirm(pub std::sync::Mutex<Option<(u64, oneshot::Sender<bool>)>>);
 
 impl Default for PendingConfirm {
     fn default() -> Self {
@@ -151,10 +167,20 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-/// Called by the frontend to answer the current confirmation prompt.
+/// Called by the frontend to answer the current confirmation prompt. The nonce
+/// must match the one emitted with `protec://confirm`, so a forged
+/// `answer_confirm` cannot resolve a prompt the user never saw.
 #[tauri::command]
-pub fn answer_confirm(allow: bool, pending: tauri::State<PendingConfirm>) {
-    if let Some(tx) = pending.0.lock().unwrap_or_else(|p| p.into_inner()).take() {
+pub fn answer_confirm(allow: bool, nonce: String, pending: tauri::State<PendingConfirm>) {
+    let mut guard = pending.0.lock().unwrap_or_else(|p| p.into_inner());
+    if let Some((expected, _)) = guard.as_ref() {
+        if expected.to_string() != nonce {
+            return; // wrong/forged nonce — ignore
+        }
+    } else {
+        return;
+    }
+    if let Some((_, tx)) = guard.take() {
         let _ = tx.send(allow);
     }
 }

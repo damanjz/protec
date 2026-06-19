@@ -9,7 +9,9 @@ pub fn get_config(state: State<AppState>) -> AppConfig {
 
 #[tauri::command]
 pub fn set_config(new_config: AppConfig, state: State<AppState>) -> Result<(), String> {
-    let sanitized = new_config.sanitized();
+    let mut sanitized = new_config.sanitized();
+    // Path changes must not come from the webview; keep the current path.
+    sanitized.vault_path = state.lock().config.vault_path.clone();
     let path = config_path();
     sanitized.save(&path)?;
     state.lock().config = sanitized;

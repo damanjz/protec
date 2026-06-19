@@ -113,7 +113,7 @@
 
   async function submitNew(input: EntryInput) {
     try {
-      await api.addEntry(input, Math.floor(Date.now() / 1000));
+      await api.addEntry(input);
       await persistIfAuto();
       await refresh();
       mode = "view";
@@ -127,7 +127,7 @@
   async function submitEdit(input: EntryInput) {
     if (!selectedId) return;
     try {
-      await api.updateEntry(selectedId, input, Math.floor(Date.now() / 1000));
+      await api.updateEntry(selectedId, input);
       await persistIfAuto();
       await refresh();
       await select(selectedId);

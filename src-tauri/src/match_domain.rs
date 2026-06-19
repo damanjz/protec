@@ -20,17 +20,33 @@ pub fn registrable_domain(url_or_origin: &str) -> Option<String> {
     Some(domain.to_string())
 }
 
+/// The scheme of a URL/origin, lowercased, if parseable.
+fn scheme_of(url_or_origin: &str) -> Option<String> {
+    url::Url::parse(url_or_origin)
+        .ok()
+        .map(|u| u.scheme().to_lowercase())
+}
+
 /// True if a saved entry URL should be offered for the given page origin.
-/// Both are reduced to their registrable domain and compared exactly — so
-/// `github.com` matches `www.github.com` but NOT `github.com.evil.com`.
+/// Both are reduced to their registrable domain and compared exactly; an
+/// https-saved credential is never offered on an http page (anti-downgrade).
 pub fn origin_matches(saved_url: &str, page_origin: &str) -> bool {
-    match (
+    let (a, b) = match (
         registrable_domain(saved_url),
         registrable_domain(page_origin),
     ) {
-        (Some(a), Some(b)) => a == b,
-        _ => false,
+        (Some(a), Some(b)) => (a, b),
+        _ => return false,
+    };
+    if a != b {
+        return false;
     }
+    if scheme_of(saved_url).as_deref() == Some("https")
+        && scheme_of(page_origin).as_deref() == Some("http")
+    {
+        return false;
+    }
+    true
 }
 
 #[cfg(test)]
@@ -113,5 +129,23 @@ mod tests {
     fn rejects_when_either_side_unparseable() {
         assert!(!origin_matches("", "https://github.com"));
         assert!(!origin_matches("https://github.com", ""));
+    }
+
+    #[test]
+    fn rejects_https_saved_on_http_page() {
+        assert!(!origin_matches("https://github.com", "http://github.com"));
+    }
+
+    #[test]
+    fn allows_https_on_https() {
+        assert!(origin_matches(
+            "https://github.com",
+            "https://www.github.com/login"
+        ));
+    }
+
+    #[test]
+    fn allows_http_saved_on_http_same_domain() {
+        assert!(origin_matches("http://example.com", "http://example.com"));
     }
 }

@@ -56,7 +56,7 @@ fn pool(opts: &CharsetOptions) -> Vec<char> {
 /// or length is zero (caller should validate/report).
 pub fn generate_password(opts: &CharsetOptions) -> Option<String> {
     let chars = pool(opts);
-    if chars.is_empty() || opts.length == 0 {
+    if chars.is_empty() || opts.length == 0 || opts.length > 4096 {
         return None;
     }
     let mut out = String::with_capacity(opts.length);
@@ -131,7 +131,7 @@ const WORDS: &[&str] = &[
 
 /// Generate a passphrase. Returns None if words == 0.
 pub fn generate_passphrase(opts: &PassphraseOptions) -> Option<String> {
-    if opts.words == 0 {
+    if opts.words == 0 || opts.words > 256 {
         return None;
     }
     let n = WORDS.len() as u32;
@@ -215,6 +215,24 @@ mod tests {
             ..Default::default()
         };
         assert!(generate_password(&opts).is_none());
+    }
+
+    #[test]
+    fn rejects_absurd_length() {
+        let opts = CharsetOptions {
+            length: usize::MAX,
+            ..Default::default()
+        };
+        assert!(generate_password(&opts).is_none());
+    }
+
+    #[test]
+    fn rejects_absurd_word_count() {
+        let opts = PassphraseOptions {
+            words: usize::MAX,
+            ..Default::default()
+        };
+        assert!(generate_passphrase(&opts).is_none());
     }
 
     #[test]

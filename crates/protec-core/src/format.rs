@@ -47,7 +47,26 @@ impl Header {
         if self.version != FORMAT_VERSION {
             return Err(VaultError::VersionUnsupported(self.version));
         }
+        // Reject absurd KDF params from a tampered/hostile vault file before they
+        // reach Argon2 (which would otherwise burn CPU/RAM on a value the AEAD
+        // check would ultimately reject anyway).
+        if self.kdf_mem_kib > 1_048_576 {
+            // > 1 GiB memory cost is not a legitimate Protec vault.
+            return Err(VaultError::Corrupted);
+        }
+        if self.kdf_iters > 100 {
+            return Err(VaultError::Corrupted);
+        }
+        if self.kdf_lanes == 0 || self.kdf_lanes > 64 {
+            return Err(VaultError::Corrupted);
+        }
         Ok(())
+    }
+
+    /// The per-vault Argon2 salt (random 16 bytes set at vault creation). Stable
+    /// across the vault's lifetime; used as a per-vault salt for the Hello KDF.
+    pub fn kdf_salt(&self) -> [u8; 16] {
+        self.kdf_salt
     }
 }
 
@@ -100,6 +119,17 @@ mod tests {
     fn bad_magic_is_corrupted() {
         let mut f = sample();
         f.header.magic = *b"XXXXXX";
+        let bytes = f.to_bytes().unwrap();
+        assert!(matches!(
+            VaultFile::from_bytes(&bytes),
+            Err(VaultError::Corrupted)
+        ));
+    }
+
+    #[test]
+    fn rejects_absurd_kdf_params() {
+        let mut f = sample();
+        f.header.kdf_mem_kib = 4_000_000; // ~4 GiB — hostile
         let bytes = f.to_bytes().unwrap();
         assert!(matches!(
             VaultFile::from_bytes(&bytes),

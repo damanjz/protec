@@ -55,9 +55,9 @@ pub struct EntryInput {
 }
 
 #[tauri::command]
-pub fn add_entry(input: EntryInput, now: u64, state: State<AppState>) -> Result<Uuid, String> {
+pub fn add_entry(input: EntryInput, state: State<AppState>) -> Result<Uuid, String> {
     with_unlocked(&state, |v| {
-        let mut e = Entry::new(input.title, now);
+        let mut e = Entry::new(input.title, now_secs());
         e.username = input.username;
         e.password = input.password;
         e.url = input.url;
@@ -70,12 +70,7 @@ pub fn add_entry(input: EntryInput, now: u64, state: State<AppState>) -> Result<
 }
 
 #[tauri::command]
-pub fn update_entry(
-    id: Uuid,
-    input: EntryInput,
-    now: u64,
-    state: State<AppState>,
-) -> Result<(), String> {
+pub fn update_entry(id: Uuid, input: EntryInput, state: State<AppState>) -> Result<(), String> {
     with_unlocked(&state, |v| {
         let existing = v.get(id).ok_or_else(|| "Entry not found".to_string())?;
         let mut e = existing.clone();
@@ -85,7 +80,7 @@ pub fn update_entry(
         e.url = input.url;
         e.notes = input.notes;
         e.tags = input.tags;
-        e.updated_at = now;
+        e.updated_at = now_secs();
         v.update(id, e).map_err(map_err)
     })
 }
@@ -98,4 +93,12 @@ pub fn delete_entry(id: Uuid, state: State<AppState>) -> Result<(), String> {
 #[tauri::command]
 pub fn save_vault(state: State<AppState>) -> Result<(), String> {
     with_unlocked(&state, |v| v.save().map_err(map_err))
+}
+
+fn now_secs() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }

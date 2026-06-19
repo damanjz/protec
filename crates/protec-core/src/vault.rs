@@ -104,6 +104,12 @@ impl LockedVault {
     pub fn has_wrap(&self, kind: &crate::wrap::WrapKind) -> bool {
         self.file.header.wraps.iter().any(|w| &w.kind == kind)
     }
+
+    /// The vault's per-vault Argon2 salt. Readable without unlocking; used as the
+    /// per-vault salt for the Hello wrapping-key KDF.
+    pub fn kdf_salt(&self) -> [u8; 16] {
+        self.file.header.kdf_salt()
+    }
 }
 
 /// An unlocked vault. ONLY this type exposes secret access. Keys wiped on drop.
@@ -207,6 +213,12 @@ impl UnlockedVault {
     /// True if the header contains a wrap of the given kind.
     pub fn has_wrap(&self, kind: &crate::wrap::WrapKind) -> bool {
         self.header.wraps.iter().any(|w| &w.kind == kind)
+    }
+
+    /// The vault's per-vault Argon2 salt; used as the per-vault salt for the
+    /// Hello wrapping-key KDF.
+    pub fn kdf_salt(&self) -> [u8; 16] {
+        self.header.kdf_salt()
     }
 }
 

@@ -67,6 +67,9 @@ where
             Response::Status { unlocked }
         }
         Request::Find { origin } => {
+            if crate::match_domain::registrable_domain(&origin).is_none() {
+                return Response::NoMatch;
+            }
             let matches = {
                 let inner = state.lock();
                 match &inner.slot {
@@ -91,6 +94,9 @@ where
             username,
             password,
         } => {
+            if crate::match_domain::registrable_domain(&origin).is_none() {
+                return Response::Acknowledged;
+            }
             let outcome = {
                 let inner = state.lock();
                 match &inner.slot {
@@ -118,7 +124,11 @@ where
                         e.username = username;
                         e.password = password;
                         v.add(e);
-                        let _ = v.save();
+                        if v.save().is_err() {
+                            return Response::Error {
+                                message: "Failed to save".into(),
+                            };
+                        }
                         Response::Acknowledged
                     } else {
                         Response::Locked
@@ -135,7 +145,11 @@ where
                             updated.password = password;
                             updated.updated_at = now_secs();
                             let _ = v.update(id, updated);
-                            let _ = v.save();
+                            if v.save().is_err() {
+                                return Response::Error {
+                                    message: "Failed to save".into(),
+                                };
+                            }
                         }
                         Response::Acknowledged
                     } else {

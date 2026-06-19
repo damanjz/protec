@@ -6,6 +6,9 @@ use std::time::Duration;
 /// the clipboard after the delay (best-effort; only clears if it still matches).
 #[tauri::command]
 pub fn copy_secret(text: String, clear_secs: u64) -> Result<(), String> {
+    // Defensive cap: never sleep longer than 1 hour (the config UI clamps too,
+    // but a direct invoke could pass anything).
+    let clear_secs = clear_secs.min(3_600);
     let mut cb = Clipboard::new().map_err(|e| e.to_string())?;
     cb.set_text(text.clone()).map_err(|e| e.to_string())?;
     if clear_secs > 0 {

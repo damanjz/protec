@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-audit
+      - run: cargo install cargo-audit --version "^0.21" --locked
       - run: cargo audit
   gui:
     runs-on: windows-latest
@@ -32,6 +32,7 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run test
       - run: npm run build
       - run: cargo clippy -p protec-gui --all-targets -- -D warnings
