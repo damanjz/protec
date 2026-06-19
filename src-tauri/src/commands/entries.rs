@@ -17,7 +17,7 @@ fn with_unlocked<T>(
     state: &State<AppState>,
     f: impl FnOnce(&mut protec_core::UnlockedVault) -> Result<T, String>,
 ) -> Result<T, String> {
-    let mut inner = state.inner.lock().unwrap();
+    let mut inner = state.lock();
     match &mut inner.slot {
         VaultSlot::Unlocked(v) => f(v),
         VaultSlot::Locked => Err("Vault is locked".into()),

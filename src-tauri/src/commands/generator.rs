@@ -17,23 +17,27 @@ pub struct GenRequest {
 
 #[tauri::command]
 pub fn generate(req: GenRequest) -> Result<String, String> {
-    if req.mode == "passphrase" {
-        let opts = PassphraseOptions {
-            words: req.words,
-            separator: req.separator,
-            capitalize: req.capitalize,
-        };
-        generate_passphrase(&opts).ok_or_else(|| "Word count must be at least 1".into())
-    } else {
-        let opts = CharsetOptions {
-            length: req.length,
-            lowercase: req.lowercase,
-            uppercase: req.uppercase,
-            digits: req.digits,
-            symbols: req.symbols,
-            exclude_ambiguous: req.exclude_ambiguous,
-        };
-        generate_password(&opts)
-            .ok_or_else(|| "Enable at least one character set and a non-zero length".into())
+    match req.mode.as_str() {
+        "passphrase" => {
+            let opts = PassphraseOptions {
+                words: req.words,
+                separator: req.separator,
+                capitalize: req.capitalize,
+            };
+            generate_passphrase(&opts).ok_or_else(|| "Word count must be at least 1".into())
+        }
+        "chars" => {
+            let opts = CharsetOptions {
+                length: req.length,
+                lowercase: req.lowercase,
+                uppercase: req.uppercase,
+                digits: req.digits,
+                symbols: req.symbols,
+                exclude_ambiguous: req.exclude_ambiguous,
+            };
+            generate_password(&opts)
+                .ok_or_else(|| "Enable at least one character set and a non-zero length".into())
+        }
+        other => Err(format!("Unknown generator mode: {other}")),
     }
 }

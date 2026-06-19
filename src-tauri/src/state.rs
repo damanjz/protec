@@ -2,6 +2,7 @@ use crate::config::AppConfig;
 use protec_core::UnlockedVault;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::sync::MutexGuard;
 
 /// Whether a vault is currently open in memory.
 pub enum VaultSlot {
@@ -27,8 +28,14 @@ impl AppState {
         }
     }
 
+    /// Lock the inner state, recovering from poisoning (a prior panic) instead of
+    /// propagating it — a poisoned lock must not brick the whole app.
+    pub fn lock(&self) -> MutexGuard<'_, Inner> {
+        self.inner.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
     pub fn is_unlocked(&self) -> bool {
-        matches!(self.inner.lock().unwrap().slot, VaultSlot::Unlocked(_))
+        matches!(self.lock().slot, VaultSlot::Unlocked(_))
     }
 }
 

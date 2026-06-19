@@ -26,7 +26,7 @@ impl From<&Entry> for EntrySummary {
 
 /// Full detail, returned only on explicit get_entry. Password masked unless revealed
 /// by the caller via the `reveal` flag in the command (see commands/entries.rs).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntryDetail {
     pub id: Uuid,
     pub title: String,
@@ -38,6 +38,19 @@ pub struct EntryDetail {
     pub has_totp: bool,
     pub created_at: u64,
     pub updated_at: u64,
+}
+
+impl std::fmt::Debug for EntryDetail {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EntryDetail")
+            .field("id", &self.id)
+            .field("title", &self.title)
+            .field("username", &self.username)
+            .field("password", &"<redacted>")
+            .field("url", &self.url)
+            .field("has_totp", &self.has_totp)
+            .finish_non_exhaustive()
+    }
 }
 
 impl EntryDetail {

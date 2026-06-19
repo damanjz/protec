@@ -4,7 +4,7 @@ use tauri::State;
 
 #[tauri::command]
 pub fn get_config(state: State<AppState>) -> AppConfig {
-    state.inner.lock().unwrap().config.clone()
+    state.lock().config.clone()
 }
 
 #[tauri::command]
@@ -12,7 +12,7 @@ pub fn set_config(new_config: AppConfig, state: State<AppState>) -> Result<(), S
     let sanitized = new_config.sanitized();
     let path = config_path();
     sanitized.save(&path)?;
-    state.inner.lock().unwrap().config = sanitized;
+    state.lock().config = sanitized;
     Ok(())
 }
 

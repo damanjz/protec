@@ -89,13 +89,46 @@ impl Default for PassphraseOptions {
     }
 }
 
-/// A small embedded wordlist. Kept short but sufficient for memorable phrases;
-/// entropy comes from word count × list size.
+/// Embedded passphrase wordlist of 264 distinct, short, common English words.
+/// 264 words ≈ 8 bits/word, so a 4-word phrase ≈ 32 bits and the UI's max of
+/// 8 words ≈ 64 bits. Entropy is word count × log2(list size). Words are concrete
+/// nouns/adjectives (animals, colors, objects, nature, food), 3–8 letters, all
+/// lowercase, with no duplicates.
 const WORDS: &[&str] = &[
-    "correct", "horse", "battery", "staple", "anchor", "bishop", "cobalt", "dynamo",
-    "ember", "falcon", "granite", "harbor", "ingot", "jaguar", "kernel", "lumen",
-    "marble", "nimbus", "onyx", "pixel", "quartz", "raven", "summit", "tundra",
-    "umbra", "vortex", "willow", "xenon", "yonder", "zephyr", "amber", "basalt",
+    "able", "acid", "acorn", "actor", "amber", "anchor", "angle", "ankle",
+    "apple", "apron", "arch", "arrow", "ash", "aspen", "atom", "autumn",
+    "axe", "azure", "bacon", "badge", "bagel", "baker", "bamboo", "banana",
+    "banjo", "barley", "basil", "basin", "basket", "beach", "beacon", "bean",
+    "bear", "beaver", "beetle", "berry", "birch", "bird", "bison", "black",
+    "blade", "blanket", "block", "bloom", "blue", "boat", "bolt", "bone",
+    "bonus", "book", "boot", "bottle", "boulder", "bowl", "branch", "brass",
+    "bread", "brick", "bridge", "broom", "brown", "brush", "bubble", "bucket",
+    "buffalo", "bugle", "bunny", "burrow", "button", "cabin", "cable", "cactus",
+    "camel", "candle", "canoe", "canyon", "carbon", "cargo", "carrot", "castle",
+    "cedar", "celery", "chain", "chalk", "cheese", "cherry", "chest", "chili",
+    "cider", "clay", "clever", "cliff", "clock", "cloud", "clover", "coal",
+    "coast", "cobalt", "cocoa", "coffee", "comet", "copper", "coral", "corn",
+    "cotton", "cougar", "cousin", "cover", "crab", "crane", "crater", "cream",
+    "crow", "crystal", "cube", "daisy", "dawn", "deer", "delta", "desert",
+    "diamond", "dimple", "dolphin", "donut", "dove", "dragon", "drum", "duck",
+    "dune", "dusk", "eagle", "earth", "ember", "emerald", "engine", "fable",
+    "falcon", "fawn", "fern", "field", "finch", "flame", "flint", "flower",
+    "flute", "forest", "fossil", "fountain", "fox", "frog", "frost", "garden",
+    "garnet", "ginger", "glacier", "globe", "goat", "gold", "goose", "granite",
+    "grape", "grass", "green", "grove", "guava", "hammer", "harbor", "hazel",
+    "heron", "hickory", "honey", "hornet", "horse", "ivory", "jade", "jaguar",
+    "jasmine", "jelly", "jungle", "kettle", "kitten", "koala", "lagoon", "lake",
+    "lantern", "lava", "leaf", "lemon", "lentil", "lilac", "lily", "lime",
+    "lion", "lizard", "llama", "lotus", "lumber", "mango", "maple", "marble",
+    "marsh", "meadow", "melon", "mint", "mirror", "moose", "moss", "mountain",
+    "mouse", "muffin", "needle", "nickel", "noodle", "oak", "ocean", "olive",
+    "onion", "onyx", "orange", "orchid", "otter", "owl", "oyster", "paddle",
+    "panda", "pansy", "paper", "parrot", "peach", "peanut", "pearl", "pebble",
+    "pecan", "pelican", "penguin", "pepper", "pewter", "pigeon", "pillow", "pine",
+    "pizza", "planet", "plum", "pond", "poppy", "potato", "prairie", "pumpkin",
+    "quartz", "rabbit", "radish", "raisin", "raven", "ribbon", "river", "robin",
+    "rose", "ruby", "saddle", "salmon", "sapphire", "scarf", "seal", "silver",
+    "sparrow", "spruce", "tiger", "tulip", "violet", "walnut", "willow", "zebra",
 ];
 
 /// Generate a passphrase. Returns None if words == 0.
@@ -194,5 +227,13 @@ mod tests {
     fn passphrase_zero_words_is_none() {
         let opts = PassphraseOptions { words: 0, ..Default::default() };
         assert!(generate_passphrase(&opts).is_none());
+    }
+
+    #[test]
+    fn wordlist_is_large_and_unique() {
+        use std::collections::HashSet;
+        assert!(WORDS.len() >= 256, "wordlist too small: {}", WORDS.len());
+        let set: HashSet<&&str> = WORDS.iter().collect();
+        assert_eq!(set.len(), WORDS.len(), "wordlist has duplicates");
     }
 }
