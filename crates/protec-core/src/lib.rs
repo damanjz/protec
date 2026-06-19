@@ -25,5 +25,5 @@ mod wrap;
 
 pub use entry::{CustomField, Entry, Totp};
 pub use error::VaultError;
-pub use generator::{generate_password, CharsetOptions};
+pub use generator::{generate_passphrase, generate_password, CharsetOptions, PassphraseOptions};
 pub use vault::{LockedVault, UnlockedVault, Vault};

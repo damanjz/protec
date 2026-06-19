@@ -75,6 +75,56 @@ pub fn generate_password(opts: &CharsetOptions) -> Option<String> {
     Some(out)
 }
 
+/// Options for word-based passphrases (e.g. "correct-horse-battery-staple").
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PassphraseOptions {
+    pub words: usize,
+    pub separator: String,
+    pub capitalize: bool,
+}
+
+impl Default for PassphraseOptions {
+    fn default() -> Self {
+        Self { words: 4, separator: "-".to_string(), capitalize: false }
+    }
+}
+
+/// A small embedded wordlist. Kept short but sufficient for memorable phrases;
+/// entropy comes from word count × list size.
+const WORDS: &[&str] = &[
+    "correct", "horse", "battery", "staple", "anchor", "bishop", "cobalt", "dynamo",
+    "ember", "falcon", "granite", "harbor", "ingot", "jaguar", "kernel", "lumen",
+    "marble", "nimbus", "onyx", "pixel", "quartz", "raven", "summit", "tundra",
+    "umbra", "vortex", "willow", "xenon", "yonder", "zephyr", "amber", "basalt",
+];
+
+/// Generate a passphrase. Returns None if words == 0.
+pub fn generate_passphrase(opts: &PassphraseOptions) -> Option<String> {
+    if opts.words == 0 {
+        return None;
+    }
+    let n = WORDS.len() as u32;
+    let limit = u32::MAX - (u32::MAX % n);
+    let mut parts: Vec<String> = Vec::with_capacity(opts.words);
+    for _ in 0..opts.words {
+        let idx = loop {
+            let r = OsRng.next_u32();
+            if r < limit {
+                break (r % n) as usize;
+            }
+        };
+        let mut w = WORDS[idx].to_string();
+        if opts.capitalize {
+            let mut c = w.chars();
+            if let Some(first) = c.next() {
+                w = first.to_uppercase().collect::<String>() + c.as_str();
+            }
+        }
+        parts.push(w);
+    }
+    Some(parts.join(&opts.separator))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,5 +174,25 @@ mod tests {
     fn zero_length_returns_none() {
         let opts = CharsetOptions { length: 0, ..Default::default() };
         assert!(generate_password(&opts).is_none());
+    }
+
+    #[test]
+    fn passphrase_has_requested_word_count() {
+        let opts = PassphraseOptions { words: 5, separator: "-".into(), capitalize: false };
+        let phrase = generate_passphrase(&opts).unwrap();
+        assert_eq!(phrase.split('-').count(), 5);
+    }
+
+    #[test]
+    fn passphrase_capitalizes_when_requested() {
+        let opts = PassphraseOptions { words: 3, separator: " ".into(), capitalize: true };
+        let phrase = generate_passphrase(&opts).unwrap();
+        assert!(phrase.split(' ').all(|w| w.chars().next().unwrap().is_uppercase()));
+    }
+
+    #[test]
+    fn passphrase_zero_words_is_none() {
+        let opts = PassphraseOptions { words: 0, ..Default::default() };
+        assert!(generate_passphrase(&opts).is_none());
     }
 }
