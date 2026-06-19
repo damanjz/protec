@@ -4,6 +4,7 @@
   import { unlocked, vaultExists, theme } from "./lib/stores/vault";
   import FirstRun from "./lib/components/FirstRun.svelte";
   import LockScreen from "./lib/components/LockScreen.svelte";
+  import MainView from "./lib/components/MainView.svelte";
 
   let loading = true;
 
@@ -31,7 +32,7 @@
 {:else if !$unlocked}
   <LockScreen />
 {:else}
-  <p class="center">Vault unlocked — main view in next task.</p>
+  <MainView />
 {/if}
 
 <style>
