@@ -7,6 +7,8 @@ pub enum VaultError {
     WrongPassword,
     #[error("vault file is corrupted")]
     Corrupted,
+    #[error("no entry with the given id")]
+    NotFound,
     #[error("vault authentication failed (data was tampered with)")]
     Tampered,
     #[error("vault format version {0} is not supported")]

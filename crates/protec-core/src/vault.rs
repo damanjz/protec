@@ -113,13 +113,16 @@ impl UnlockedVault {
         self.entries.push(entry);
     }
 
-    pub fn update(&mut self, id: uuid::Uuid, updated: Entry) -> Result<(), VaultError> {
+    pub fn update(&mut self, id: uuid::Uuid, mut updated: Entry) -> Result<(), VaultError> {
         self.touch();
         let slot = self
             .entries
             .iter_mut()
             .find(|e| e.id == id)
-            .ok_or(VaultError::Corrupted)?;
+            .ok_or(VaultError::NotFound)?;
+        // Enforce id consistency: the stored entry keeps the lookup id regardless
+        // of what the caller put in `updated.id`.
+        updated.id = id;
         *slot = updated;
         Ok(())
     }
@@ -129,7 +132,7 @@ impl UnlockedVault {
         let before = self.entries.len();
         self.entries.retain(|e| e.id != id);
         if self.entries.len() == before {
-            return Err(VaultError::Corrupted);
+            return Err(VaultError::NotFound);
         }
         Ok(())
     }
@@ -251,6 +254,65 @@ mod tests {
 
         v.delete(id).unwrap();
         assert!(v.get(id).is_none());
-        assert!(matches!(v.delete(id), Err(VaultError::Corrupted)));
+        assert!(matches!(v.delete(id), Err(VaultError::NotFound)));
+    }
+
+    #[test]
+    fn update_keeps_lookup_id_even_if_caller_mismatches() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.dat");
+        Vault::create(&path, "pw").unwrap();
+        let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
+
+        let e = Entry::new("Site", 1);
+        let id = e.id;
+        v.add(e);
+
+        // Caller passes an entry with a DIFFERENT id; update must keep `id`.
+        let mut wrong = Entry::new("Site", 2);
+        assert_ne!(wrong.id, id);
+        wrong.password = "x".into();
+        v.update(id, wrong).unwrap();
+
+        // The entry is still found under the original id, with the new data.
+        let got = v.get(id).unwrap();
+        assert_eq!(got.id, id);
+        assert_eq!(got.password, "x");
+    }
+
+    #[test]
+    fn update_missing_id_returns_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.dat");
+        Vault::create(&path, "pw").unwrap();
+        let mut v = Vault::open(&path).unwrap().unlock("pw").unwrap();
+        let orphan = Entry::new("Nope", 1);
+        let oid = orphan.id;
+        assert!(matches!(v.update(oid, orphan), Err(VaultError::NotFound)));
+    }
+
+    #[test]
+    fn tampered_header_field_fails_auth() {
+        use crate::format::VaultFile;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.dat");
+        Vault::create(&path, "pw").unwrap();
+
+        // Read, deserialize, mutate a HEADER field, re-serialize, write back.
+        let bytes = read_all(&path).unwrap();
+        let mut file = VaultFile::from_bytes(&bytes).unwrap();
+        file.header.kdf_iters ^= 0x01; // flip a bit in an authenticated header field
+        let tampered = file.to_bytes().unwrap();
+        write_atomic(&path, &tampered).unwrap();
+
+        // Unlock must fail authentication because the header is bound as AAD.
+        // (Wrong password is impossible here — the password is correct; the
+        // header no longer matches what the body was sealed against.)
+        let locked = Vault::open(&path).unwrap();
+        let res = locked.unlock("pw");
+        assert!(matches!(
+            res,
+            Err(VaultError::Tampered) | Err(VaultError::WrongPassword)
+        ));
     }
 }

@@ -8,7 +8,6 @@ license.workspace = true
 argon2 = "0.5"
 chacha20poly1305 = "0.10"
 zeroize = { version = "1", features = ["derive"] }
-secrecy = "0.8"
 serde = { version = "1", features = ["derive"] }
 bincode = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
