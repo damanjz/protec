@@ -5,5 +5,6 @@
 
 mod error;
 mod crypto;
+mod wrap;
 
 pub use error::VaultError;
