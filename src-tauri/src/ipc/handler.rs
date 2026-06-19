@@ -111,7 +111,9 @@ where
                     }
                     let mut inner = state.lock();
                     if let VaultSlot::Unlocked(v) = &mut inner.slot {
-                        let mut e = Entry::new(origin.clone(), now_secs());
+                        let title = crate::match_domain::registrable_domain(&origin)
+                            .unwrap_or_else(|| origin.clone());
+                        let mut e = Entry::new(title, now_secs());
                         e.url = origin;
                         e.username = username;
                         e.password = password;

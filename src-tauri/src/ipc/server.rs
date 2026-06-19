@@ -36,7 +36,14 @@ async fn handle_conn(app: AppHandle, mut server: NamedPipeServer) -> std::io::Re
     let mut len = [0u8; 4];
     server.read_exact(&mut len).await?;
     let n = u32::from_le_bytes(len) as usize;
-    if n > 16 * 1024 * 1024 {
+    if n > 1024 * 1024 {
+        write_response(
+            &mut server,
+            &Response::Error {
+                message: "Request too large".into(),
+            },
+        )
+        .await?;
         return Ok(());
     }
     let mut body = vec![0u8; n];
@@ -44,11 +51,11 @@ async fn handle_conn(app: AppHandle, mut server: NamedPipeServer) -> std::io::Re
 
     let req: Request = match serde_json::from_slice(&body) {
         Ok(r) => r,
-        Err(e) => {
+        Err(_) => {
             write_response(
                 &mut server,
                 &Response::Error {
-                    message: e.to_string(),
+                    message: "Malformed request".into(),
                 },
             )
             .await?;
@@ -87,7 +94,8 @@ async fn handle_conn(app: AppHandle, mut server: NamedPipeServer) -> std::io::Re
 }
 
 async fn write_response(server: &mut NamedPipeServer, resp: &Response) -> std::io::Result<()> {
-    let body = serde_json::to_vec(resp).unwrap_or_default();
+    // Every Response variant is a simple enum of String/bool, so this is infallible.
+    let body = serde_json::to_vec(resp).expect("Response serialization is infallible");
     server.write_all(&(body.len() as u32).to_le_bytes()).await?;
     server.write_all(&body).await?;
     server.flush().await

@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 /// Browser native messaging frames each message as a 4-byte little-endian
 /// length prefix followed by that many bytes of UTF-8 JSON.
 /// Chrome caps messages at 1 MB inbound; we enforce a sane limit.
-const MAX_MESSAGE: u32 = 64 * 1024 * 1024;
+const MAX_MESSAGE: u32 = 1024 * 1024; // 1 MB — matches Chrome's native-messaging cap and the app's pipe limit
 
 /// Read one framed message from `r`. Returns None on clean EOF (browser closed).
 pub fn read_message(r: &mut impl Read) -> std::io::Result<Option<Vec<u8>>> {

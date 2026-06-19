@@ -20,6 +20,8 @@ A fully local, open-source password manager. Your secrets never leave your machi
 | `protec-core` | done | the secure vault engine |
 | `protec-cli`  | dropped | (skipped — see GUI) |
 | `protec-gui`  | available (dev) | desktop app (Tauri + Svelte) |
+| `protec-host` | available (dev) | native-messaging broker for the browser extension |
+| `protec-extension` | available (dev) | browser autofill (Chrome/Edge/Firefox) |
 
 ## Running the GUI (development)
 

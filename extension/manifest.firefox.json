@@ -3,7 +3,7 @@
   "name": "Protec",
   "version": "0.1.0",
   "description": "Autofill from your local Protec vault.",
-  "permissions": ["nativeMessaging", "activeTab", "tabs", "scripting"],
+  "permissions": ["nativeMessaging", "activeTab", "tabs"],
   "background": { "scripts": ["background.js"] },
   "action": { "default_popup": "popup.html" },
   "content_scripts": [
