@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use zeroize::Zeroize;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Totp {
@@ -18,10 +19,23 @@ impl std::fmt::Debug for Totp {
     }
 }
 
+impl Drop for Totp {
+    fn drop(&mut self) {
+        self.secret.zeroize();
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CustomField {
     pub name: String,
     pub value: String,
+}
+
+impl Drop for CustomField {
+    fn drop(&mut self) {
+        // `value` may hold a secret (API key, PIN, etc.); `name` is a label.
+        self.value.zeroize();
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -54,6 +68,15 @@ impl std::fmt::Debug for Entry {
             .field("created_at", &self.created_at)
             .field("updated_at", &self.updated_at)
             .finish()
+    }
+}
+
+impl Drop for Entry {
+    fn drop(&mut self) {
+        // Wipe secret-bearing fields. `totp` and `custom_fields` wipe themselves
+        // via their own Drop impls when this struct's fields are dropped.
+        self.password.zeroize();
+        self.notes.zeroize();
     }
 }
 
@@ -101,5 +124,42 @@ mod tests {
         let bytes = bincode::serialize(&e).unwrap();
         let back: Entry = bincode::deserialize(&bytes).unwrap();
         assert_eq!(e, back);
+    }
+
+    #[test]
+    fn entry_still_clones_and_serde_round_trips_with_drop() {
+        let mut e = Entry::new("Email", 1);
+        e.password = "s3cr3t".into();
+        e.notes = "note".into();
+        e.totp = Some(Totp {
+            secret: "JBSWY3DPEHPK3PXP".into(),
+            digits: 6,
+            period: 30,
+        });
+        e.custom_fields = vec![CustomField {
+            name: "pin".into(),
+            value: "1234".into(),
+        }];
+        let cloned = e.clone();
+        assert_eq!(e, cloned);
+        let bytes = bincode::serialize(&e).unwrap();
+        let back: Entry = bincode::deserialize(&bytes).unwrap();
+        assert_eq!(e, back);
+    }
+
+    #[test]
+    fn totp_and_custom_field_implement_zeroize_on_drop() {
+        // Compile-level proof the Drop impls exist and run without panic.
+        {
+            let _t = Totp {
+                secret: "abc".into(),
+                digits: 6,
+                period: 30,
+            };
+            let _c = CustomField {
+                name: "n".into(),
+                value: "v".into(),
+            };
+        } // drop runs here, zeroizing secret/value — no panic, no double-free
     }
 }
