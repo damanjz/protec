@@ -6,6 +6,11 @@
   import EntryDetailView from "./EntryDetail.svelte";
   import EntryForm from "./EntryForm.svelte";
   import Toast from "./Toast.svelte";
+  import CommandPalette from "./CommandPalette.svelte";
+  import GeneratorPanel from "./GeneratorPanel.svelte";
+  import Settings from "./Settings.svelte";
+  import { theme } from "../stores/vault";
+  import { onDestroy } from "svelte";
 
   let items: EntrySummary[] = [];
   let selectedId: string | null = null;
@@ -14,6 +19,49 @@
   let mode: "view" | "new" | "edit" = "view";
   let toast = "";
   let toastKind: "info" | "error" = "info";
+
+  let showPalette = false;
+  let showGenerator = false;
+  let showSettings = false;
+  let pendingFillNew = false;
+
+  function handleCommand(cmd: string) {
+    if (cmd === "cmd:new") mode = "new";
+    else if (cmd === "cmd:generate") showGenerator = true;
+    else if (cmd === "cmd:settings") showSettings = true;
+    else if (cmd === "cmd:lock") lock();
+    else if (cmd === "cmd:theme") toggleTheme();
+  }
+
+  async function toggleTheme() {
+    const cfg = await api.getConfig();
+    const next = cfg.theme === "terminal-green" ? "slate" : "terminal-green";
+    cfg.theme = next;
+    await api.setConfig(cfg);
+    theme.set(next as "slate" | "terminal-green");
+    document.documentElement.setAttribute("data-theme", next);
+  }
+
+  // ---- idle auto-lock ----
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  async function resetIdle() {
+    if (idleTimer) clearTimeout(idleTimer);
+    const cfg = await api.getConfig();
+    const secs = Number(cfg.auto_lock_secs ?? 600);
+    if (secs > 0) {
+      idleTimer = setTimeout(() => { lock(); }, secs * 1000);
+    }
+  }
+
+  function globalKeydown(e: KeyboardEvent) {
+    resetIdle();
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); showPalette = true; }
+    else if (mod && e.key.toLowerCase() === "l") { e.preventDefault(); lock(); }
+    else if (mod && e.key.toLowerCase() === "n") { e.preventDefault(); mode = "new"; }
+  }
+
+  function globalActivity() { resetIdle(); }
 
   function notify(msg: string, kind: "info" | "error" = "info") {
     toast = msg; toastKind = kind;
@@ -101,6 +149,19 @@
     copyPw,
   };
 
+  if (typeof window !== "undefined") {
+    window.addEventListener("keydown", globalKeydown);
+    window.addEventListener("mousemove", globalActivity);
+    resetIdle();
+  }
+  onDestroy(() => {
+    if (typeof window !== "undefined") {
+      window.removeEventListener("keydown", globalKeydown);
+      window.removeEventListener("mousemove", globalActivity);
+    }
+    if (idleTimer) clearTimeout(idleTimer);
+  });
+
   onMount(refresh);
 </script>
 
@@ -125,6 +186,17 @@
     </div>
   </div>
   <Toast message={toast} kind={toastKind} />
+  {#if showPalette}
+    <CommandPalette entries={items} onPick={(id) => { select(id); showPalette = false; }}
+      onCommand={handleCommand} onClose={() => (showPalette = false)} />
+  {/if}
+  {#if showGenerator}
+    <GeneratorPanel onClose={() => (showGenerator = false)}
+      onUse={(pw) => { showGenerator = false; if (mode !== "edit") mode = "new"; pendingFillNew = pw.length > 0; }} />
+  {/if}
+  {#if showSettings}
+    <Settings onClose={() => (showSettings = false)} />
+  {/if}
 </div>
 
 <style>
