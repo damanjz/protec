@@ -11,6 +11,7 @@ fn map_err(e: VaultError) -> String {
         VaultError::Corrupted => "Vault file is corrupted".into(),
         VaultError::VersionUnsupported(v) => format!("Unsupported vault version: {v}"),
         VaultError::NotFound => "Entry not found".into(),
+        VaultError::OperationNotAllowed => "Operation not allowed".into(),
         VaultError::Io(e) => format!("File error: {e}"),
     }
 }
