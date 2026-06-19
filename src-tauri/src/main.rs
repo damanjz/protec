@@ -34,7 +34,13 @@ fn main() {
             commands::auth::unlock,
             commands::auth::lock,
             commands::auth::backup_available,
-            commands::auth::restore_backup
+            commands::auth::restore_backup,
+            commands::entries::list_entries,
+            commands::entries::get_entry,
+            commands::entries::add_entry,
+            commands::entries::update_entry,
+            commands::entries::delete_entry,
+            commands::entries::save_vault
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
