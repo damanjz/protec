@@ -19,7 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-audit --version "^0.21" --locked
+      # 0.22+ understands CVSS 4.0 advisory entries; 0.21 crashed loading the
+      # advisory DB when a new CVSS-4.0 RUSTSEC entry appeared.
+      - run: cargo install cargo-audit --version "^0.22" --locked
       - run: cargo audit
   gui:
     runs-on: windows-latest
