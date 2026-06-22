@@ -2511,6 +2511,7 @@ name = "protec-gui"
 version = "0.1.0"
 dependencies = [
  "arboard",
+ "libc",
  "protec-core",
  "protec-hello",
  "psl",
