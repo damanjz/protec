@@ -55,20 +55,37 @@ fn spawn_macos(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let path = endpoint();
         if let Some(parent) = std::path::Path::new(&path).parent() {
-            let _ = std::fs::create_dir_all(parent);
-            let _ = std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700));
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                eprintln!("protec: failed to create IPC dir {parent:?}: {e}");
+            }
+            if let Err(e) = std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700))
+            {
+                eprintln!("protec: failed to chmod IPC dir {parent:?}: {e}");
+            }
         }
         loop {
             // Remove any stale socket before binding.
             let _ = std::fs::remove_file(&path);
-            let listener = match UnixListener::bind(&path) {
+            // Create the socket with owner-only perms from birth: tighten the
+            // umask before bind so there is no world-accessible window, then
+            // restore it. (umask is process-global but this runs once at startup.)
+            let prev_umask = unsafe { libc::umask(0o177) };
+            let bind_result = UnixListener::bind(&path);
+            unsafe {
+                libc::umask(prev_umask);
+            }
+            let listener = match bind_result {
                 Ok(l) => l,
                 Err(_) => {
                     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                     continue;
                 }
             };
-            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+            // Defense-in-depth: ensure 0o600 even if umask was overridden.
+            if let Err(e) = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+            {
+                eprintln!("protec: failed to chmod IPC socket {path:?}: {e}");
+            }
             loop {
                 match listener.accept().await {
                     Ok((stream, _addr)) => {

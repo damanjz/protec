@@ -7,7 +7,10 @@ pub const PIPE_NAME: &str = r"\\.\pipe\protec-ipc-v1";
 /// The endpoint the app listens on and the host connects to.
 /// Windows: a named pipe. Unix/macOS: a Unix-domain-socket path under the app
 /// data dir. Kept here so app and host agree on one definition.
+// Kept for API symmetry with the macOS arm and the host crate's endpoint
+// contract; not yet called on Windows (spawn uses PIPE_NAME directly).
 #[cfg(windows)]
+#[allow(dead_code)]
 pub fn endpoint() -> String {
     PIPE_NAME.to_string()
 }
