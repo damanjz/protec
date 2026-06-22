@@ -41,11 +41,15 @@ jobs:
       # the frontend dist/ — a plain cargo build produces a binary that points at
       # the dev server (localhost) and cannot run standalone.
       - name: Cache tauri-cli
+        id: cache-tauri-cli
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/cargo-tauri.exe
           key: tauri-cli-v2-${{ runner.os }}
-      - run: cargo install tauri-cli --version "^2" --locked
+      # Only install when the cache missed; --force avoids "binary already exists"
+      # when the cache restored it.
+      - if: steps.cache-tauri-cli.outputs.cache-hit != 'true'
+        run: cargo install tauri-cli --version "^2" --locked --force
       - run: cargo tauri build
   host:
     runs-on: windows-latest
@@ -80,3 +84,46 @@ jobs:
       - run: npm ci
       - run: npm run test
       - run: npm run build
+  # Experimental macOS build. Produces an UNSIGNED universal .dmg in the cloud
+  # (no Apple Developer account). This proves the cross-platform code compiles and
+  # bundles on a real macOS runner — it does NOT prove the app runs correctly, so
+  # the artifact ships labeled experimental / community-tested.
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - run: cargo clippy -p protec-gui --all-targets -- -D warnings
+      - run: cargo test -p protec-gui
+      - run: cargo clippy -p protec-host --all-targets -- -D warnings
+      - run: cargo test -p protec-host
+      - run: cargo test -p protec-core
+      - name: Cache tauri-cli
+        id: cache-tauri-cli
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-tauri
+          key: tauri-cli-v2-${{ runner.os }}
+      - if: steps.cache-tauri-cli.outputs.cache-hit != 'true'
+        run: cargo install tauri-cli --version "^2" --locked --force
+      - name: Build unsigned universal .dmg
+        run: cargo tauri build --target universal-apple-darwin
+        env:
+          # "-" = ad-hoc codesign (no keychain identity needed). An empty string
+          # makes the bundler look up an identity named "" and fail; "-" tells
+          # codesign to sign ad-hoc, which is correct for an unsigned CI build.
+          APPLE_SIGNING_IDENTITY: "-"
+      - name: Upload macOS .dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: protec-macos-universal-dmg
+          path: target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
