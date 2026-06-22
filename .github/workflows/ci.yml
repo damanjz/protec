@@ -117,7 +117,10 @@ jobs:
       - name: Build unsigned universal .dmg
         run: cargo tauri build --target universal-apple-darwin
         env:
-          APPLE_SIGNING_IDENTITY: ""
+          # "-" = ad-hoc codesign (no keychain identity needed). An empty string
+          # makes the bundler look up an identity named "" and fail; "-" tells
+          # codesign to sign ad-hoc, which is correct for an unsigned CI build.
+          APPLE_SIGNING_IDENTITY: "-"
       - name: Upload macOS .dmg artifact
         uses: actions/upload-artifact@v4
         with:
