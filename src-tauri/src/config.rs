@@ -159,10 +159,21 @@ mod tests {
         assert_eq!(c.vault_path, None);
     }
 
+    // What counts as an absolute path is OS-dependent (`Path::is_absolute`), so the
+    // production validation rightly keeps `C:\...` on Windows and `/...` on Unix.
+    // The test uses the appropriate absolute path per platform.
     #[test]
+    #[cfg(windows)]
     fn keeps_absolute_vault_path() {
         let c = AppConfig::from_toml_or_default("vault_path = \"C:\\\\Users\\\\me\\\\v.dat\"");
         assert_eq!(c.vault_path.as_deref(), Some("C:\\Users\\me\\v.dat"));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn keeps_absolute_vault_path() {
+        let c = AppConfig::from_toml_or_default("vault_path = \"/Users/me/v.dat\"");
+        assert_eq!(c.vault_path.as_deref(), Some("/Users/me/v.dat"));
     }
 
     #[test]
