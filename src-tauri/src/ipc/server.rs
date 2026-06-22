@@ -86,16 +86,12 @@ fn spawn_macos(app: AppHandle) {
             {
                 eprintln!("protec: failed to chmod IPC socket {path:?}: {e}");
             }
-            loop {
-                match listener.accept().await {
-                    Ok((stream, _addr)) => {
-                        let app2 = app.clone();
-                        tauri::async_runtime::spawn(async move {
-                            let _ = handle_conn(app2, stream).await;
-                        });
-                    }
-                    Err(_) => break, // re-bind on accept failure
-                }
+            // On any accept error, exit the inner loop so the outer loop re-binds.
+            while let Ok((stream, _addr)) = listener.accept().await {
+                let app2 = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = handle_conn(app2, stream).await;
+                });
             }
         }
     });

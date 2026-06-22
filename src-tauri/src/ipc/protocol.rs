@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 /// The named pipe both the app (server) and host (client) use. Versioned so a
-/// future breaking change can bump it.
+/// future breaking change can bump it. Only referenced on Windows (the macOS
+/// build uses a Unix socket via `endpoint()`), so it's dead code elsewhere.
+#[cfg_attr(not(windows), allow(dead_code))]
 pub const PIPE_NAME: &str = r"\\.\pipe\protec-ipc-v1";
 
 /// The endpoint the app listens on and the host connects to.
