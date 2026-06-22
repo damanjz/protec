@@ -12,9 +12,13 @@ pub fn endpoint() -> String {
     PIPE_NAME.to_string()
 }
 
-/// Unix socket path: `<data_dir>/Protec/protec-ipc-v1.sock`. Falls back to a
-/// temp dir if the home/data dir cannot be resolved.
-#[cfg(unix)]
+/// Unix socket path on macOS: `<data_dir>/Protec/protec-ipc-v1.sock`. Falls back
+/// to a temp dir if HOME cannot be resolved.
+///
+/// IMPORTANT: the host crate (`crates/protec-host/src/pipe.rs`) derives this SAME
+/// path independently (it cannot depend on the gui crate). Keep the two in sync:
+/// HOME -> "Library/Application Support" -> "Protec" -> "protec-ipc-v1.sock".
+#[cfg(target_os = "macos")]
 pub fn endpoint() -> String {
     let base = std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
