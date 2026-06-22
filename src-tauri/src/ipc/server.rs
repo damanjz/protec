@@ -1,14 +1,29 @@
+use crate::ipc::framing::{read_frame, write_frame};
 use crate::ipc::handler::process;
-use crate::ipc::protocol::{Request, Response, PIPE_NAME};
+use crate::ipc::protocol::{Request, Response};
 use crate::state::AppState;
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::oneshot;
 
-/// Spawn the named-pipe server. Each client connection is handled, one request
-/// per connection (the extension opens a fresh connection per request).
+/// Spawn the IPC server. One request per connection (the host opens a fresh
+/// connection per request). Transport is platform-specific; per-connection
+/// handling is shared.
 pub fn spawn(app: AppHandle) {
+    #[cfg(windows)]
+    {
+        spawn_windows(app);
+    }
+    #[cfg(target_os = "macos")]
+    {
+        spawn_macos(app);
+    }
+}
+
+#[cfg(windows)]
+fn spawn_windows(app: AppHandle) {
+    use crate::ipc::protocol::PIPE_NAME;
+    use tokio::net::windows::named_pipe::ServerOptions;
     tauri::async_runtime::spawn(async move {
         loop {
             let server = match ServerOptions::new()
@@ -32,28 +47,66 @@ pub fn spawn(app: AppHandle) {
     });
 }
 
-async fn handle_conn(app: AppHandle, mut server: NamedPipeServer) -> std::io::Result<()> {
-    let mut len = [0u8; 4];
-    server.read_exact(&mut len).await?;
-    let n = u32::from_le_bytes(len) as usize;
-    if n > 1024 * 1024 {
-        write_response(
-            &mut server,
-            &Response::Error {
-                message: "Request too large".into(),
-            },
-        )
-        .await?;
-        return Ok(());
-    }
-    let mut body = vec![0u8; n];
-    server.read_exact(&mut body).await?;
+#[cfg(target_os = "macos")]
+fn spawn_macos(app: AppHandle) {
+    use crate::ipc::protocol::endpoint;
+    use std::os::unix::fs::PermissionsExt;
+    use tokio::net::UnixListener;
+    tauri::async_runtime::spawn(async move {
+        let path = endpoint();
+        if let Some(parent) = std::path::Path::new(&path).parent() {
+            let _ = std::fs::create_dir_all(parent);
+            let _ = std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700));
+        }
+        loop {
+            // Remove any stale socket before binding.
+            let _ = std::fs::remove_file(&path);
+            let listener = match UnixListener::bind(&path) {
+                Ok(l) => l,
+                Err(_) => {
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    continue;
+                }
+            };
+            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+            loop {
+                match listener.accept().await {
+                    Ok((stream, _addr)) => {
+                        let app2 = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let _ = handle_conn(app2, stream).await;
+                        });
+                    }
+                    Err(_) => break, // re-bind on accept failure
+                }
+            }
+        }
+    });
+}
+
+async fn handle_conn<S>(app: AppHandle, mut stream: S) -> std::io::Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    let body = match read_frame(&mut stream).await {
+        Ok(b) => b,
+        Err(_) => {
+            write_response(
+                &mut stream,
+                &Response::Error {
+                    message: "Request too large or malformed".into(),
+                },
+            )
+            .await?;
+            return Ok(());
+        }
+    };
 
     let req: Request = match serde_json::from_slice(&body) {
         Ok(r) => r,
         Err(_) => {
             write_response(
-                &mut server,
+                &mut stream,
                 &Response::Error {
                     message: "Malformed request".into(),
                 },
@@ -77,7 +130,7 @@ async fn handle_conn(app: AppHandle, mut server: NamedPipeServer) -> std::io::Re
             .unwrap_or_else(|p| p.into_inner())
             .check(&origin, now);
         if !allowed {
-            write_response(&mut server, &Response::Denied).await?;
+            write_response(&mut stream, &Response::Denied).await?;
             return Ok(());
         }
     }
@@ -90,15 +143,16 @@ async fn handle_conn(app: AppHandle, mut server: NamedPipeServer) -> std::io::Re
     })
     .await;
 
-    write_response(&mut server, &resp).await
+    write_response(&mut stream, &resp).await
 }
 
-async fn write_response(server: &mut NamedPipeServer, resp: &Response) -> std::io::Result<()> {
+async fn write_response<S>(stream: &mut S, resp: &Response) -> std::io::Result<()>
+where
+    S: AsyncWrite + Unpin,
+{
     // Every Response variant is a simple enum of String/bool, so this is infallible.
     let body = serde_json::to_vec(resp).expect("Response serialization is infallible");
-    server.write_all(&(body.len() as u32).to_le_bytes()).await?;
-    server.write_all(&body).await?;
-    server.flush().await
+    write_frame(stream, &body).await
 }
 
 /// Raise the desktop confirmation prompt and await Allow/Deny. Emits an event
