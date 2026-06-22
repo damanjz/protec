@@ -8,7 +8,13 @@
 
   let title = initial?.title ?? "";
   let username = initial?.username ?? "";
-  let password = initial && initial.password !== "••••••••" ? initial.password : "";
+  // When editing, MainView loads the entry revealed, so initial.password holds the real
+  // value (not the mask). Fall back to "" only when there is no initial (new entry).
+  // NOTE: these `let` initializers run once at mount. This is correct because MainView
+  // renders the form inside an {#if mode === ...} block, which destroys and recreates
+  // the component on every mode switch — so `initial` is always fresh. If that {#if}
+  // is ever replaced with a keep-alive pattern, these must become reactive.
+  let password = initial?.password ?? "";
   let url = initial?.url ?? "";
   let notes = initial?.notes ?? "";
   let tagsText = (initial?.tags ?? []).join(", ");

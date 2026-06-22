@@ -87,6 +87,28 @@
     detail = await api.getEntry(id, revealed);
   }
 
+  async function enterEdit() {
+    if (!selectedId) return;
+    // Load the entry revealed so the form pre-fills the real password/notes rather than
+    // the mask. This goes through the same RevealLimiter as any other reveal.
+    try {
+      detail = await api.getEntry(selectedId, true);
+      revealed = true;
+      mode = "edit";
+    } catch (e) {
+      // Reveal-limited or other error: stay in view mode, don't open a half-filled form.
+      notify(String(e), "error");
+    }
+  }
+
+  async function cancelEdit() {
+    // Return to view mode without leaving the entry revealed: re-select so the
+    // detail is re-fetched honoring the reveal_on_select config (default masked).
+    injectedPassword = null;
+    mode = "view";
+    if (selectedId) await select(selectedId);
+  }
+
   async function reveal() {
     if (!selectedId) return;
     const next = !revealed;
@@ -212,10 +234,10 @@
       {#if mode === "new"}
         <EntryForm initial={null} injectedPassword={injectedPassword} onSubmit={submitNew} onCancel={() => { mode = "view"; injectedPassword = null; }} onGenerate={genPassword} />
       {:else if mode === "edit"}
-        <EntryForm initial={detail} onSubmit={submitEdit} onCancel={() => (mode = "view")} onGenerate={genPassword} />
+        <EntryForm initial={detail} onSubmit={submitEdit} onCancel={cancelEdit} onGenerate={genPassword} />
       {:else}
         <EntryDetailView {detail} {revealed} onCopy={copyPw} onReveal={reveal}
-          onEdit={() => (mode = "edit")} onDelete={del} />
+          onEdit={enterEdit} onDelete={del} />
       {/if}
     </div>
   </div>
