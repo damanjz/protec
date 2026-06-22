@@ -13,3 +13,6 @@ app-icon.png
 
 # internal design/process docs — not published
 docs/superpowers/
+
+# git worktrees
+/.worktrees/

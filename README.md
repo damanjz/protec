@@ -83,6 +83,41 @@ fingerprint, face, or PIN in addition to your master password. It is **opt-in**
 non-exportable, machine-bound TPM key; disabling it deletes that key. On devices
 without Hello, the option simply doesn't appear.
 
+## macOS (experimental)
+
+> **Experimental / community-tested.** The macOS build is produced in CI and has
+> **not** been verified by the maintainers on real hardware. Use at your own risk and
+> keep a backup of your vault. Biometric (Touch ID) unlock is **not** available on
+> macOS yet — unlock with your master password. Windows Hello is Windows-only.
+
+**Install a release build:**
+
+1. Download `Protec_<version>_universal.dmg` from the latest
+   [Release](https://github.com/damanjz/protec/releases) (universal — runs on both
+   Apple Silicon and Intel).
+2. Open the `.dmg` and drag **Protec** to **Applications**.
+3. The app is **unsigned**, so macOS Gatekeeper warns on first launch. Either:
+   - **Right-click** the app → **Open** → **Open** in the dialog, or
+   - run `xattr -d com.apple.quarantine /Applications/Protec.app`
+4. Browser integration uses a local **Unix domain socket**
+   (`~/Library/Application Support/Protec/protec-ipc-v1.sock`) — no network, no ports,
+   same gatekeeper/domain-matching rules as on Windows. Register the host with:
+
+   ```bash
+   extension/scripts/register-host-macos.sh /path/to/protec-host <chromium-ext-id>
+   ```
+
+Your vault lives at `~/Library/Application Support/Protec/vault.dat`; preferences
+(without secrets) at `~/Library/Application Support/Protec/config.toml`.
+
+**Build it yourself on a Mac:**
+
+```bash
+cargo install tauri-cli --version "^2" --locked
+npm install
+cargo tauri build --target universal-apple-darwin   # unsigned universal .dmg
+```
+
 ## License
 
 Apache-2.0.
