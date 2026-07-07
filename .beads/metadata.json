@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "Protec",
+  "project_id": "db690c7b-3c26-4d16-be5d-331a17601b7a"
+}
