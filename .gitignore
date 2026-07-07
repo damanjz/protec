@@ -25,3 +25,6 @@ graphify-out/
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# release binaries live on GitHub Releases
+/release-assets/
