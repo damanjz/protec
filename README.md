@@ -8,7 +8,7 @@
 
 Protec is a fully local, open-source password manager: a Rust vault engine, a Tauri and Svelte desktop app, a browser extension for autofill and optional Windows Hello unlock. There is no account, no server and no telemetry; your secrets live in one encrypted file on your own machine and never leave it.
 
-[Releases](https://github.com/damanjz/protec/releases) · [Portfolio page](https://damanjz.github.io/portfolio/projects/protec/)
+[Releases](https://github.com/damanjz/protec/releases) · [Portfolio page](https://damanjz.github.io/portfolio/projects/protec/) · [![ci](https://github.com/damanjz/protec/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/damanjz/protec/actions/workflows/ci.yml)
 
 ## Results
 
